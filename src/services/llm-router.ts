@@ -1,0 +1,482 @@
+import { AppSettings, ChatMessage, ProviderType } from '../types';
+
+export interface StreamChatOptions {
+  messages: ChatMessage[];
+  settings: AppSettings;
+  signal?: AbortSignal;
+  onChunk: (chunk: string, accumulated: string) => void;
+  onProviderSelected?: (provider: ProviderType, model: string) => void;
+  onProviderFailed?: (provider: ProviderType, reason: string) => void;
+}
+
+const FIRST_TOKEN_TIMEOUT_MS = 6000; // 6 seconds per spec
+
+export class LLMRouter {
+  static async streamWithFallback(options: StreamChatOptions): Promise<{ provider: ProviderType; model: string; text: string }> {
+    const { messages, settings, signal, onChunk, onProviderSelected, onProviderFailed } = options;
+
+    const chain = settings.fallbackChain && settings.fallbackChain.length > 0
+      ? settings.fallbackChain
+      : (['gemini', 'openai', 'claude', 'ollama'] as ProviderType[]);
+
+    const errors: { provider: ProviderType; error: string }[] = [];
+
+    for (const provider of chain) {
+      if (signal?.aborted) {
+        throw new DOMException('Aborted by user', 'AbortError');
+      }
+
+      // Check if provider has required configuration
+      const hasKey = this.hasCredentials(provider, settings);
+      if (!hasKey) {
+        onProviderFailed?.(provider, 'No API key or endpoint configured');
+        errors.push({ provider, error: 'No API key configured' });
+        continue;
+      }
+
+      try {
+        const modelName = this.getModelName(provider, settings);
+        onProviderSelected?.(provider, modelName);
+
+        const resultText = await this.streamFromProvider(provider, {
+          messages,
+          settings,
+          parentSignal: signal,
+          onChunk,
+        });
+
+        return {
+          provider,
+          model: modelName,
+          text: resultText,
+        };
+      } catch (err: any) {
+        const errorMsg = err?.message || String(err);
+        console.warn(`[LLMRouter] Provider ${provider} failed: ${errorMsg}`);
+        onProviderFailed?.(provider, errorMsg);
+        errors.push({ provider, error: errorMsg });
+        // Proceed to next fallback tier
+      }
+    }
+
+    // If all configured providers failed, use friendly built-in companion response
+    console.warn('[LLMRouter] All providers in fallback chain failed. Using companion fallback.', errors);
+    const fallbackText = this.generateOfflineFallback(messages, errors);
+    
+    // Simulate streaming for the fallback response so the avatar still talks
+    let accumulated = '';
+    const words = fallbackText.split(' ');
+    for (let i = 0; i < words.length; i++) {
+      if (signal?.aborted) break;
+      const piece = (i === 0 ? '' : ' ') + words[i];
+      accumulated += piece;
+      onChunk(piece, accumulated);
+      await new Promise((r) => setTimeout(r, 45));
+    }
+
+    return {
+      provider: 'ollama',
+      model: 'companion-offline-fallback',
+      text: accumulated,
+    };
+  }
+
+  private static hasCredentials(provider: ProviderType, settings: AppSettings): boolean {
+    switch (provider) {
+      case 'gemini':
+        return !!settings.geminiApiKey?.trim();
+      case 'openai':
+        return !!settings.openaiApiKey?.trim();
+      case 'claude':
+        return !!settings.claudeApiKey?.trim();
+      case 'ollama':
+        return !!settings.ollamaEndpoint?.trim();
+      default:
+        return false;
+    }
+  }
+
+  private static getModelName(provider: ProviderType, settings: AppSettings): string {
+    switch (provider) {
+      case 'gemini':
+        return settings.geminiModel || 'gemini-2.5-flash';
+      case 'openai':
+        return settings.openaiModel || 'gpt-4o-mini';
+      case 'claude':
+        return settings.claudeModel || 'claude-3-5-sonnet-20241022';
+      case 'ollama':
+        return settings.ollamaModel || 'llama3.2';
+    }
+  }
+
+  private static async streamFromProvider(
+    provider: ProviderType,
+    params: {
+      messages: ChatMessage[];
+      settings: AppSettings;
+      parentSignal?: AbortSignal;
+      onChunk: (chunk: string, accumulated: string) => void;
+    }
+  ): Promise<string> {
+    const { messages, settings, parentSignal, onChunk } = params;
+
+    // Timeout controller for 6s first token
+    const timeoutController = new AbortController();
+    let firstTokenReceived = false;
+
+    const timeoutId = setTimeout(() => {
+      if (!firstTokenReceived) {
+        timeoutController.abort(new Error(`Timeout: No token received within ${FIRST_TOKEN_TIMEOUT_MS / 1000}s`));
+      }
+    }, FIRST_TOKEN_TIMEOUT_MS);
+
+    // Combine parent abort signal and timeout abort signal
+    const combinedSignal = parentSignal
+      ? anySignal([parentSignal, timeoutController.signal])
+      : timeoutController.signal;
+
+    const markFirstToken = () => {
+      if (!firstTokenReceived) {
+        firstTokenReceived = true;
+        clearTimeout(timeoutId);
+      }
+    };
+
+    try {
+      switch (provider) {
+        case 'gemini':
+          return await this.streamGemini(messages, settings, combinedSignal, markFirstToken, onChunk);
+        case 'openai':
+          return await this.streamOpenAI(messages, settings, combinedSignal, markFirstToken, onChunk);
+        case 'claude':
+          return await this.streamClaude(messages, settings, combinedSignal, markFirstToken, onChunk);
+        case 'ollama':
+          return await this.streamOllama(messages, settings, combinedSignal, markFirstToken, onChunk);
+        default:
+          throw new Error(`Unsupported provider: ${provider}`);
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  // --- GEMINI PROVIDER ---
+  private static async streamGemini(
+    messages: ChatMessage[],
+    settings: AppSettings,
+    signal: AbortSignal,
+    onFirstToken: () => void,
+    onChunk: (chunk: string, accumulated: string) => void
+  ): Promise<string> {
+    const model = settings.geminiModel || 'gemini-2.5-flash';
+    const apiKey = settings.geminiApiKey.trim();
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+    const contents = [
+      ...(settings.systemPrompt
+        ? [{ role: 'user', parts: [{ text: `[System Instructions]: ${settings.systemPrompt}` }] },
+           { role: 'model', parts: [{ text: 'Understood, I am your desktop companion ready to assist!' }] }]
+        : []),
+      ...messages.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+    ];
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
+      throw new Error(`Gemini HTTP ${response.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    if (!response.body) throw new Error('Gemini response body is null');
+
+    let accumulated = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data: ')) {
+          const jsonStr = trimmed.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+          try {
+            const data = JSON.parse(jsonStr);
+            const textChunk = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (textChunk) {
+              onFirstToken();
+              accumulated += textChunk;
+              onChunk(textChunk, accumulated);
+            }
+          } catch {
+            // Ignore partial SSE chunk parse error
+          }
+        }
+      }
+    }
+
+    if (!accumulated) throw new Error('Empty response from Gemini');
+    return accumulated;
+  }
+
+  // --- OPENAI PROVIDER ---
+  private static async streamOpenAI(
+    messages: ChatMessage[],
+    settings: AppSettings,
+    signal: AbortSignal,
+    onFirstToken: () => void,
+    onChunk: (chunk: string, accumulated: string) => void
+  ): Promise<string> {
+    const model = settings.openaiModel || 'gpt-4o-mini';
+    const apiKey = settings.openaiApiKey.trim();
+    const url = 'https://api.openai.com/v1/chat/completions';
+
+    const formattedMessages = [
+      ...(settings.systemPrompt ? [{ role: 'system', content: settings.systemPrompt }] : []),
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ];
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: formattedMessages,
+        stream: true,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
+      throw new Error(`OpenAI HTTP ${response.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    if (!response.body) throw new Error('OpenAI response body is null');
+
+    let accumulated = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data: ')) {
+          const jsonStr = trimmed.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+          try {
+            const data = JSON.parse(jsonStr);
+            const textChunk = data.choices?.[0]?.delta?.content;
+            if (textChunk) {
+              onFirstToken();
+              accumulated += textChunk;
+              onChunk(textChunk, accumulated);
+            }
+          } catch {
+            // Ignore incomplete JSON
+          }
+        }
+      }
+    }
+
+    if (!accumulated) throw new Error('Empty response from OpenAI');
+    return accumulated;
+  }
+
+  // --- CLAUDE PROVIDER ---
+  private static async streamClaude(
+    messages: ChatMessage[],
+    settings: AppSettings,
+    signal: AbortSignal,
+    onFirstToken: () => void,
+    onChunk: (chunk: string, accumulated: string) => void
+  ): Promise<string> {
+    const model = settings.claudeModel || 'claude-3-5-sonnet-20241022';
+    const apiKey = settings.claudeApiKey.trim();
+    const url = 'https://api.anthropic.com/v1/messages';
+
+    const formattedMessages = messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model,
+        system: settings.systemPrompt,
+        messages: formattedMessages,
+        max_tokens: 1024,
+        stream: true,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
+      throw new Error(`Claude HTTP ${response.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    if (!response.body) throw new Error('Claude response body is null');
+
+    let accumulated = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data: ')) {
+          const jsonStr = trimmed.slice(6).trim();
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data.type === 'content_block_delta' && data.delta?.text) {
+              onFirstToken();
+              accumulated += data.delta.text;
+              onChunk(data.delta.text, accumulated);
+            }
+          } catch {
+            // Ignore incomplete SSE
+          }
+        }
+      }
+    }
+
+    if (!accumulated) throw new Error('Empty response from Claude');
+    return accumulated;
+  }
+
+  // --- OLLAMA LOCAL PROVIDER ---
+  private static async streamOllama(
+    messages: ChatMessage[],
+    settings: AppSettings,
+    signal: AbortSignal,
+    onFirstToken: () => void,
+    onChunk: (chunk: string, accumulated: string) => void
+  ): Promise<string> {
+    const endpoint = (settings.ollamaEndpoint || 'http://localhost:11434').replace(/\/$/, '');
+    const model = settings.ollamaModel || 'llama3.2';
+    const url = `${endpoint}/api/chat`;
+
+    const formattedMessages = [
+      ...(settings.systemPrompt ? [{ role: 'system', content: settings.systemPrompt }] : []),
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ];
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: formattedMessages,
+        stream: true,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
+      throw new Error(`Ollama HTTP ${response.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    if (!response.body) throw new Error('Ollama response body is null');
+
+    let accumulated = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const data = JSON.parse(trimmed);
+          const textChunk = data.message?.content;
+          if (textChunk) {
+            onFirstToken();
+            accumulated += textChunk;
+            onChunk(textChunk, accumulated);
+          }
+        } catch {
+          // Incomplete json chunk
+        }
+      }
+    }
+
+    if (!accumulated) throw new Error('Empty response from Ollama');
+    return accumulated;
+  }
+
+  // Built-in offline fallback message when no provider is connected
+  private static generateOfflineFallback(messages: ChatMessage[], errors: { provider: ProviderType; error: string }[]): string {
+    const lastUserMsg = messages[messages.length - 1]?.content || 'Hello';
+    const errorDetails = errors.length > 0 
+      ? `\n\nDetalles del intento:\n${errors.map((e) => `• ${e.provider}: ${e.error}`).join('\n')}`
+      : '';
+    
+    return `¡Hola! (◕‿◕) Recibí tu mensaje: "${lastUserMsg}".\n\nEstoy lista en tu escritorio, pero actualmente ninguna API pudo responder.${errorDetails}\n\nPara activar mi inteligencia completa con tolerancia a fallos:\n1. Hacé clic en el engranaje ⚙️ de Configuración.\n2. Ingresá tu API Key de Gemini, OpenAI o Claude (o levantá Ollama en localhost:11434).\n\n¡Estoy esperando tus instrucciones! ✨`;
+  }
+}
+
+// Polyfill helper for combining AbortSignals if AbortSignal.any is not supported
+function anySignal(signals: AbortSignal[]): AbortSignal {
+  if (typeof (AbortSignal as any).any === 'function') {
+    return (AbortSignal as any).any(signals);
+  }
+  const controller = new AbortController();
+  for (const sig of signals) {
+    if (sig.aborted) {
+      controller.abort(sig.reason);
+      return controller.signal;
+    }
+    sig.addEventListener('abort', () => controller.abort(sig.reason), { once: true });
+  }
+  return controller.signal;
+}
