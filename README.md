@@ -74,7 +74,7 @@ Waifiu está desarrollado sobre el núcleo multiplataforma de **Tauri v2** y es 
 ### Instalación
 ```bash
 # Clonar el repositorio
-git clone https://github.com/tu-usuario/waifiu.git
+git clone https://github.com/luisillo77D/waifiu.git
 cd waifiu
 
 # Instalar dependencias de Node
