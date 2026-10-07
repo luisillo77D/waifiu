@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { AvatarState } from '../types';
 
 interface AvatarProps {
@@ -8,6 +8,13 @@ interface AvatarProps {
   variant?: 'neko' | 'cyber' | 'chibi';
   onDragStart?: () => void;
   onDragEnd?: () => void;
+}
+
+interface CursorInfo {
+  cursor_x: number;
+  cursor_y: number;
+  window_x: number;
+  window_y: number;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({
@@ -21,6 +28,10 @@ export const Avatar: React.FC<AvatarProps> = ({
   const [blink, setBlink] = useState(false);
   const [mouthOpen, setMouthOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [eyeOffset, setEyeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const avatarContainerRef = useRef<HTMLDivElement>(null);
+  const isInsideWindowRef = useRef<boolean>(true);
 
   // Periodic blinking during idle, speaking, or dragging
   useEffect(() => {
@@ -48,8 +59,102 @@ export const Avatar: React.FC<AvatarProps> = ({
     return () => clearInterval(interval);
   }, [state]);
 
+  // Local and Global Cursor Tracking Logic
+  useEffect(() => {
+    if (state === 'error') {
+      setEyeOffset({ x: 0, y: 0 });
+      return;
+    }
+    if (state === 'thinking') {
+      // Look thoughtfully upwards
+      setEyeOffset({ x: -2.5, y: -4 });
+      return;
+    }
+    if (state === 'dragging') {
+      // Look upwards surprised
+      setEyeOffset({ x: 0, y: -3.5 });
+      return;
+    }
+
+    // 1. Local cursor tracking within window
+    const handleMouseMove = (e: MouseEvent) => {
+      isInsideWindowRef.current = true;
+      if (!avatarContainerRef.current) return;
+
+      const rect = avatarContainerRef.current.getBoundingClientRect();
+      const eyeCenterClientX = rect.left + rect.width * 0.5;
+      const eyeCenterClientY = rect.top + rect.height * (158 / 320);
+
+      const dx = e.clientX - eyeCenterClientX;
+      const dy = e.clientY - eyeCenterClientY;
+      const angle = Math.atan2(dy, dx);
+      const dist = Math.hypot(dx, dy);
+
+      // Max offset range of 5.5px with gentle falloff
+      const clampedDist = Math.min(5.5, dist / 30);
+      setEyeOffset({
+        x: Math.cos(angle) * clampedDist,
+        y: Math.sin(angle) * clampedDist,
+      });
+    };
+
+    const handleMouseLeave = () => {
+      isInsideWindowRef.current = false;
+    };
+
+    const handleMouseEnter = () => {
+      isInsideWindowRef.current = true;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseleave', handleMouseLeave);
+    document.addEventListener('mouseenter', handleMouseEnter);
+
+    // 2. Global OS cursor tracking when mouse leaves the app window
+    let globalIntervalId: any = null;
+
+    const pollGlobalCursor = async () => {
+      if (isInsideWindowRef.current) return;
+      if (!avatarContainerRef.current) return;
+
+      try {
+        const { invoke, isTauri } = await import('@tauri-apps/api/core');
+        if (!isTauri()) return;
+
+        const info = await invoke<CursorInfo>('get_cursor_info');
+        const rect = avatarContainerRef.current.getBoundingClientRect();
+
+        const eyeGlobalX = info.window_x + rect.left + rect.width * 0.5;
+        const eyeGlobalY = info.window_y + rect.top + rect.height * (158 / 320);
+
+        const dx = info.cursor_x - eyeGlobalX;
+        const dy = info.cursor_y - eyeGlobalY;
+        const angle = Math.atan2(dy, dx);
+        const dist = Math.hypot(dx, dy);
+
+        const clampedDist = Math.min(5.5, dist / 50);
+        setEyeOffset({
+          x: Math.cos(angle) * clampedDist,
+          y: Math.sin(angle) * clampedDist,
+        });
+      } catch {
+        // Fallback or window hidden
+      }
+    };
+
+    globalIntervalId = setInterval(pollGlobalCursor, 50); // 20 FPS polling when outside
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('mouseenter', handleMouseEnter);
+      if (globalIntervalId) clearInterval(globalIntervalId);
+    };
+  }, [state]);
+
   return (
     <div
+      ref={avatarContainerRef}
       data-tauri-drag-region
       onMouseDown={() => onDragStart?.()}
       onMouseUp={() => onDragEnd?.()}
@@ -233,7 +338,7 @@ export const Avatar: React.FC<AvatarProps> = ({
             opacity={state === 'dragging' ? '0.85' : '0.55'}
           />
 
-          {/* 6. ANIME EYES */}
+          {/* 6. ANIME EYES WITH CURSOR TRACKING */}
           {state === 'error' ? (
             // Dizzy spiral eyes (@_@)
             <g stroke="#9333ea" strokeWidth="3" fill="none" strokeLinecap="round">
@@ -247,9 +352,9 @@ export const Avatar: React.FC<AvatarProps> = ({
               <path d="M 174 158 Q 185 148 200 158" />
             </g>
           ) : (
-            // Full anime big glossy eyes
+            // Full anime big glossy eyes with dynamic gaze tracking
             <g>
-              {/* Eyelashes / Upper lid */}
+              {/* Eyelashes / Upper lid (fixed frame) */}
               <path
                 d="M 118 152 Q 135 138 148 150"
                 stroke="#2e1065"
@@ -265,23 +370,23 @@ export const Avatar: React.FC<AvatarProps> = ({
                 fill="none"
               />
 
-              {/* Left Eye Iris */}
-              <ellipse cx="134" cy="158" rx="11" ry="15" fill="url(#animeEyeGrad)" />
-              {/* Pupil */}
-              <ellipse cx="134" cy="160" rx="6" ry="8" fill="#1e1b4b" />
-              {/* Eye Highlights */}
-              <circle cx="130" cy="152" r="4.5" fill="#ffffff" />
-              <circle cx="137" cy="164" r="2.5" fill="#ffffff" />
-              <circle cx="132" cy="167" r="1.5" fill="#ffffff" />
+              {/* Dynamic Left Eye Iris & Pupil */}
+              <g transform={`translate(${eyeOffset.x}, ${eyeOffset.y})`}>
+                <ellipse cx="134" cy="158" rx="11" ry="15" fill="url(#animeEyeGrad)" />
+                <ellipse cx="134" cy="160" rx="6" ry="8" fill="#1e1b4b" />
+                <circle cx="130" cy="152" r="4.5" fill="#ffffff" />
+                <circle cx="137" cy="164" r="2.5" fill="#ffffff" />
+                <circle cx="132" cy="167" r="1.5" fill="#ffffff" />
+              </g>
 
-              {/* Right Eye Iris */}
-              <ellipse cx="186" cy="158" rx="11" ry="15" fill="url(#animeEyeGrad)" />
-              {/* Pupil */}
-              <ellipse cx="186" cy="160" rx="6" ry="8" fill="#1e1b4b" />
-              {/* Eye Highlights */}
-              <circle cx="182" cy="152" r="4.5" fill="#ffffff" />
-              <circle cx="189" cy="164" r="2.5" fill="#ffffff" />
-              <circle cx="184" cy="167" r="1.5" fill="#ffffff" />
+              {/* Dynamic Right Eye Iris & Pupil */}
+              <g transform={`translate(${eyeOffset.x}, ${eyeOffset.y})`}>
+                <ellipse cx="186" cy="158" rx="11" ry="15" fill="url(#animeEyeGrad)" />
+                <ellipse cx="186" cy="160" rx="6" ry="8" fill="#1e1b4b" />
+                <circle cx="182" cy="152" r="4.5" fill="#ffffff" />
+                <circle cx="189" cy="164" r="2.5" fill="#ffffff" />
+                <circle cx="184" cy="167" r="1.5" fill="#ffffff" />
+              </g>
             </g>
           )}
 
