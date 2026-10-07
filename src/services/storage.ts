@@ -1,7 +1,15 @@
-import { AppSettings, ChatMessage } from '../types';
+import { AppSettings, ChatMessage, ProviderType } from '../types';
 
 const SETTINGS_KEY = 'waifiu_settings_v1';
 const CHAT_HISTORY_KEY = 'waifiu_chat_history_v1';
+
+export const ALL_AVAILABLE_PROVIDERS: ProviderType[] = [
+  'gemini',
+  'baseten',
+  'openai',
+  'claude',
+  'ollama',
+];
 
 export const DEFAULT_SETTINGS: AppSettings = {
   geminiApiKey: '',
@@ -19,7 +27,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ollamaEndpoint: 'http://localhost:11434',
   ollamaModel: 'llama3.2',
 
-  fallbackChain: ['gemini', 'baseten', 'openai', 'claude', 'ollama'],
+  fallbackChain: ALL_AVAILABLE_PROVIDERS,
 
   companionName: 'Waifiu',
   systemPrompt: 'You are Waifiu, an intelligent, cute, and helpful desktop companion pet. You keep responses friendly, concise, and helpful. Use expressive tone with occasional emoticons like (｡♥‿♥｡) or (◕‿◕).',
@@ -32,7 +40,27 @@ export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+
+    const parsed = JSON.parse(raw);
+
+    // Reconcile fallbackChain to include any newly registered providers missing from older localStorage
+    let chain: ProviderType[] = Array.isArray(parsed.fallbackChain)
+      ? [...parsed.fallbackChain]
+      : [...DEFAULT_SETTINGS.fallbackChain];
+
+    for (const provider of ALL_AVAILABLE_PROVIDERS) {
+      if (!chain.includes(provider)) {
+        chain.push(provider);
+      }
+    }
+
+    chain = chain.filter((p) => ALL_AVAILABLE_PROVIDERS.includes(p));
+
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      fallbackChain: chain,
+    };
   } catch (e) {
     console.error('Failed to load settings:', e);
     return DEFAULT_SETTINGS;

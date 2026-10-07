@@ -17,7 +17,7 @@ export class LLMRouter {
 
     const chain = settings.fallbackChain && settings.fallbackChain.length > 0
       ? settings.fallbackChain
-      : (['gemini', 'openai', 'claude', 'ollama'] as ProviderType[]);
+      : (['gemini', 'baseten', 'openai', 'claude', 'ollama'] as ProviderType[]);
 
     const errors: { provider: ProviderType; error: string }[] = [];
 

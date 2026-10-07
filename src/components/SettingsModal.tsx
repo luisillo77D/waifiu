@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AppSettings, ProviderType } from '../types';
+import { ALL_AVAILABLE_PROVIDERS } from '../services/storage';
 import { X, Key, Cpu, Sparkles, Check, ArrowDown, ArrowUp } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -9,7 +10,18 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onSave, onClose }) => {
-  const [current, setCurrent] = useState<AppSettings>({ ...settings });
+  const [current, setCurrent] = useState<AppSettings>(() => {
+    const chain = [...(settings.fallbackChain || [])];
+    for (const p of ALL_AVAILABLE_PROVIDERS) {
+      if (!chain.includes(p)) {
+        chain.push(p);
+      }
+    }
+    return {
+      ...settings,
+      fallbackChain: chain.filter((p) => ALL_AVAILABLE_PROVIDERS.includes(p)),
+    };
+  });
   const [activeTab, setActiveTab] = useState<'providers' | 'fallback' | 'persona'>('providers');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
