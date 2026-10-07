@@ -49,6 +49,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     switch (provider) {
       case 'gemini':
         return `✨ Gemini (${model || 'Flash'})`;
+      case 'baseten':
+        return `🚀 Baseten (${model || 'Custom'})`;
       case 'openai':
         return `⚡ OpenAI (${model || 'GPT-4o'})`;
       case 'claude':

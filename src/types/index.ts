@@ -1,6 +1,6 @@
 export type AvatarState = 'idle' | 'dragging' | 'thinking' | 'speaking' | 'error';
 
-export type ProviderType = 'gemini' | 'openai' | 'claude' | 'ollama';
+export type ProviderType = 'gemini' | 'openai' | 'claude' | 'ollama' | 'baseten';
 
 export interface ChatMessage {
   id: string;
@@ -16,6 +16,9 @@ export interface AppSettings {
   // Provider API Keys & Config
   geminiApiKey: string;
   geminiModel: string;
+
+  basetenApiKey: string;
+  basetenModelId: string;
 
   openaiApiKey: string;
   openaiModel: string;

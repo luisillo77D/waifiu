@@ -34,6 +34,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onSave, 
 
   const providerNames: Record<ProviderType, { label: string; desc: string }> = {
     gemini: { label: 'Google Gemini', desc: 'Tier 1 recomendado (Rápido y económico)' },
+    baseten: { label: 'Baseten', desc: 'Modelo dedicado / compatible con OpenAI' },
     openai: { label: 'OpenAI GPT', desc: 'Tier 2 (GPT-4o / GPT-4o-mini)' },
     claude: { label: 'Anthropic Claude', desc: 'Tier 2 (Claude 3.5 Sonnet)' },
     ollama: { label: 'Ollama Local', desc: 'Tier 3 (Offline / Respaldo local)' },
@@ -119,6 +120,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onSave, 
                     type="text"
                     value={current.geminiModel}
                     onChange={(e) => setCurrent({ ...current, geminiModel: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-100 outline-none selectable-text"
+                  />
+                </div>
+              </div>
+
+              {/* Baseten */}
+              <div className="p-3 bg-slate-900/70 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-purple-300">Baseten</span>
+                  <span className="text-[10px] text-indigo-400">Custom Deploy</span>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">API Key</label>
+                  <input
+                    type="password"
+                    value={current.basetenApiKey}
+                    onChange={(e) => setCurrent({ ...current, basetenApiKey: e.target.value })}
+                    placeholder="Baseten API Key..."
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 outline-none focus:border-purple-400 selectable-text"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">Model ID (ej: qv0467w o nombre de deploy)</label>
+                  <input
+                    type="text"
+                    value={current.basetenModelId}
+                    onChange={(e) => setCurrent({ ...current, basetenModelId: e.target.value })}
+                    placeholder="Model ID..."
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-100 outline-none selectable-text"
                   />
                 </div>

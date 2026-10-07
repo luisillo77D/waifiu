@@ -7,6 +7,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   geminiApiKey: '',
   geminiModel: 'gemini-2.5-flash',
 
+  basetenApiKey: '',
+  basetenModelId: '',
+
   openaiApiKey: '',
   openaiModel: 'gpt-4o-mini',
 
@@ -16,7 +19,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ollamaEndpoint: 'http://localhost:11434',
   ollamaModel: 'llama3.2',
 
-  fallbackChain: ['gemini', 'openai', 'claude', 'ollama'],
+  fallbackChain: ['gemini', 'baseten', 'openai', 'claude', 'ollama'],
 
   companionName: 'Waifiu',
   systemPrompt: 'You are Waifiu, an intelligent, cute, and helpful desktop companion pet. You keep responses friendly, concise, and helpful. Use expressive tone with occasional emoticons like (｡♥‿♥｡) or (◕‿◕).',

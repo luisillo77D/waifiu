@@ -91,6 +91,8 @@ export class LLMRouter {
         return !!settings.claudeApiKey?.trim();
       case 'ollama':
         return !!settings.ollamaEndpoint?.trim();
+      case 'baseten':
+        return !!(settings.basetenApiKey?.trim() && settings.basetenModelId?.trim());
       default:
         return false;
     }
@@ -106,6 +108,8 @@ export class LLMRouter {
         return settings.claudeModel || 'claude-3-5-sonnet-20241022';
       case 'ollama':
         return settings.ollamaModel || 'llama3.2';
+      case 'baseten':
+        return settings.basetenModelId || 'baseten-model';
     }
   }
 
@@ -152,6 +156,8 @@ export class LLMRouter {
           return await this.streamClaude(messages, settings, combinedSignal, markFirstToken, onChunk);
         case 'ollama':
           return await this.streamOllama(messages, settings, combinedSignal, markFirstToken, onChunk);
+        case 'baseten':
+          return await this.streamBaseten(messages, settings, combinedSignal, markFirstToken, onChunk);
         default:
           throw new Error(`Unsupported provider: ${provider}`);
       }
@@ -451,6 +457,82 @@ export class LLMRouter {
     }
 
     if (!accumulated) throw new Error('Empty response from Ollama');
+    return accumulated;
+  }
+
+  // --- BASETEN PROVIDER ---
+  private static async streamBaseten(
+    messages: ChatMessage[],
+    settings: AppSettings,
+    signal: AbortSignal,
+    onFirstToken: () => void,
+    onChunk: (chunk: string, accumulated: string) => void
+  ): Promise<string> {
+    const modelId = settings.basetenModelId.trim();
+    const apiKey = settings.basetenApiKey.trim();
+    // Baseten OpenAI-compatible route
+    const url = `https://model-${modelId}.api.baseten.co/v1/chat/completions`;
+
+    const formattedMessages = [
+      ...(settings.systemPrompt ? [{ role: 'system', content: settings.systemPrompt }] : []),
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ];
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Api-Key ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: modelId,
+        messages: formattedMessages,
+        stream: true,
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
+      throw new Error(`Baseten HTTP ${response.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    if (!response.body) throw new Error('Baseten response body is null');
+
+    let accumulated = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data: ')) {
+          const jsonStr = trimmed.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+          try {
+            const data = JSON.parse(jsonStr);
+            const textChunk = data.choices?.[0]?.delta?.content;
+            if (textChunk) {
+              onFirstToken();
+              accumulated += textChunk;
+              onChunk(textChunk, accumulated);
+            }
+          } catch {
+            // Ignore incomplete SSE
+          }
+        }
+      }
+    }
+
+    if (!accumulated) throw new Error('Empty response from Baseten');
     return accumulated;
   }
 
