@@ -16,6 +16,7 @@ export interface AppSettings {
   // Provider API Keys & Config
   geminiApiKey: string;
   geminiModel: string;
+  webSearch?: boolean;
 
   basetenApiKey: string;
   basetenModelId: string;

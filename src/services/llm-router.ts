@@ -259,6 +259,11 @@ export class LLMRouter {
       generationConfig,
     };
 
+    // Live web research via Google Search Grounding
+    if (settings.webSearch !== false) {
+      requestBody.tools = [{ google_search: {} }];
+    }
+
     if (settings.systemPrompt?.trim()) {
       requestBody.system_instruction = {
         parts: [{ text: settings.systemPrompt.trim() }],

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { AppSettings, ProviderType } from '../types';
 import { ALL_AVAILABLE_PROVIDERS } from '../services/storage';
 import { LLMRouter } from '../services/llm-router';
-import { X, Key, Cpu, Sparkles, Check, ArrowDown, ArrowUp, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { X, Key, Cpu, Sparkles, Check, ArrowDown, ArrowUp, Loader2, CheckCircle2, XCircle, Globe } from 'lucide-react';
 
 interface SettingsModalProps {
   settings: AppSettings;
@@ -205,6 +205,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onSave, 
                   <span className="text-[10px] text-slate-500 block mt-1">
                     Reintento automático: si el primero da error o timeout (&gt;6s), intenta con el siguiente.
                   </span>
+                </div>
+                <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/60 mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <div>
+                      <span className="text-[11px] font-medium text-slate-200 block leading-tight">Búsqueda web en vivo</span>
+                      <span className="text-[9px] text-slate-500 block leading-tight">Google Search Grounding para datos recientes</span>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={current.webSearch !== false}
+                      onChange={(e) => setCurrent({ ...current, webSearch: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-3 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-cyan-500"></div>
+                  </label>
                 </div>
                 {renderTestButtonAndResult('gemini')}
               </div>

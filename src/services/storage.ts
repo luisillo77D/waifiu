@@ -14,6 +14,7 @@ export const ALL_AVAILABLE_PROVIDERS: ProviderType[] = [
 export const DEFAULT_SETTINGS: AppSettings = {
   geminiApiKey: '',
   geminiModel: 'gemini-3.1-flash-lite, gemini-3.8-flash',
+  webSearch: true,
 
   basetenApiKey: '',
   basetenModelId: '',
@@ -59,6 +60,7 @@ export function loadSettings(): AppSettings {
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
+      webSearch: parsed.webSearch !== undefined ? parsed.webSearch : true,
       fallbackChain: chain,
     };
   } catch (e) {
