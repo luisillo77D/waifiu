@@ -13,7 +13,7 @@ interface AvatarProps {
 export const Avatar: React.FC<AvatarProps> = ({
   state,
   onToggleChat,
-  isChatOpen,
+  isChatOpen: _isChatOpen,
   variant: _variant = 'neko',
   onDragStart,
   onDragEnd,
@@ -168,7 +168,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onToggleChat}
-      className={`relative select-none cursor-grab active:cursor-grabbing transition-transform duration-300 filter drop-shadow-2xl ${
+      className={`relative select-none cursor-grab active:cursor-grabbing transition-transform duration-300 ${
         state === 'dragging' ? 'scale-105 -translate-y-2' : ''
       } ${isHovered ? 'scale-102' : 'scale-100'}`}
       title="Hacé clic para alternar diálogo, arrastrá para mover"
@@ -206,18 +206,18 @@ export const Avatar: React.FC<AvatarProps> = ({
         )}
       </div>
 
-      {/* Magical Aura Glow */}
-      <div
-        className={`absolute inset-4 rounded-full blur-2xl transition-opacity duration-500 pointer-events-none ${
-          state === 'thinking'
-            ? 'bg-purple-500/35 opacity-100 animate-pulse'
-            : state === 'speaking'
-            ? 'bg-pink-500/40 opacity-100 animate-pulse-glow'
-            : state === 'error'
-            ? 'bg-rose-500/40 opacity-100'
-            : 'bg-indigo-500/25 opacity-70'
-        }`}
-      />
+      {/* Gentle Subtle Aura Glow only when active */}
+      {(state === 'thinking' || state === 'speaking' || state === 'error') && (
+        <div
+          className={`absolute inset-6 rounded-full blur-xl transition-opacity duration-500 pointer-events-none ${
+            state === 'thinking'
+              ? 'bg-purple-500/20 opacity-100 animate-pulse'
+              : state === 'speaking'
+              ? 'bg-pink-500/25 opacity-100 animate-pulse-glow'
+              : 'bg-rose-500/25 opacity-100'
+          }`}
+        />
+      )}
 
       {/* ANIME WAIFU CHARACTER (ILLUSTRATION OR SVG FALLBACK) */}
       {!useFallbackSvg ? (
@@ -225,7 +225,7 @@ export const Avatar: React.FC<AvatarProps> = ({
           <img
             src="/avatar.png"
             alt="Waifiu"
-            className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-all duration-300 drop-shadow-[0_10px_25px_rgba(0,0,0,0.65)] ${
+            className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-all duration-300 drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)] ${
               state === 'speaking'
                 ? 'animate-pulse scale-[1.03]'
                 : state === 'idle'
@@ -523,18 +523,6 @@ export const Avatar: React.FC<AvatarProps> = ({
         </svg>
       </div>
       )}
-
-      {/* Floating Chat Toggle Icon */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleChat();
-        }}
-        className="absolute bottom-2 right-4 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white p-2 rounded-full shadow-lg border border-purple-400 transition-all flex items-center justify-center cursor-pointer z-30"
-        title={isChatOpen ? 'Ocultar Diálogo' : 'Mostrar Diálogo'}
-      >
-        <span className="text-xs">{isChatOpen ? '✕' : '💬'}</span>
-      </button>
     </div>
   );
 };

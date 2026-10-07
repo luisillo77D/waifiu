@@ -399,9 +399,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onSave, 
                 <textarea
                   value={current.systemPrompt}
                   onChange={(e) => setCurrent({ ...current, systemPrompt: e.target.value })}
-                  rows={6}
+                  rows={4}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 outline-none resize-none selectable-text leading-relaxed"
                 />
+              </div>
+
+              {/* Proactive Idle Companion Chatter */}
+              <div className="p-3 bg-slate-900/70 rounded-xl border border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-purple-300 block">Comentarios Espontáneos</span>
+                    <span className="text-[10px] text-slate-400 block">Comenta de ratos sobre lo que estás haciendo en pantalla</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={current.proactiveChatter !== false}
+                      onChange={(e) => setCurrent({ ...current, proactiveChatter: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-7 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-3 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500"></div>
+                  </label>
+                </div>
+
+                {current.proactiveChatter !== false && (
+                  <div>
+                    <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                      <span>Frecuencia aproximada</span>
+                      <span className="text-purple-300 font-mono font-medium">Cada {current.proactiveIntervalMinutes || 8} min</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="3"
+                      max="20"
+                      step="1"
+                      value={current.proactiveIntervalMinutes || 8}
+                      onChange={(e) => setCurrent({ ...current, proactiveIntervalMinutes: Number(e.target.value) })}
+                      className="w-full accent-purple-500 cursor-pointer"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}

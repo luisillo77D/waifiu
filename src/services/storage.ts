@@ -35,6 +35,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   alwaysOnTop: true,
   avatarVariant: 'neko',
   soundEffects: false,
+  proactiveChatter: true,
+  proactiveIntervalMinutes: 8,
 };
 
 export function loadSettings(): AppSettings {

@@ -91,10 +91,49 @@ fn search_duckduckgo(query: String) -> Result<Vec<String>, String> {
     Ok(snippets)
 }
 
+#[derive(Serialize, serde::Deserialize)]
+pub struct ActiveWindowInfo {
+    pub class: String,
+    pub title: String,
+    pub initial_title: Option<String>,
+}
+
+#[tauri::command]
+fn get_active_window() -> Result<Option<ActiveWindowInfo>, String> {
+    let output = std::process::Command::new("hyprctl")
+        .args(["activewindow", "-j"])
+        .output();
+
+    if let Ok(out) = output {
+        if out.status.success() {
+            if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
+                let class = val.get("class").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let title = val.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let initial_title = val.get("initialTitle").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+                if class.is_empty() && title.is_empty() {
+                    return Ok(None);
+                }
+                if class == "app" || title.to_lowercase().contains("waifiu") {
+                    return Ok(None);
+                }
+
+                return Ok(Some(ActiveWindowInfo {
+                    class,
+                    title,
+                    initial_title,
+                }));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_cursor_info, search_duckduckgo])
+        .invoke_handler(tauri::generate_handler![get_cursor_info, search_duckduckgo, get_active_window])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

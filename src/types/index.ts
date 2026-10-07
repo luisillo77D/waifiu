@@ -39,4 +39,6 @@ export interface AppSettings {
   alwaysOnTop: boolean;
   avatarVariant: 'neko' | 'cyber' | 'chibi';
   soundEffects: boolean;
+  proactiveChatter?: boolean;
+  proactiveIntervalMinutes?: number;
 }
