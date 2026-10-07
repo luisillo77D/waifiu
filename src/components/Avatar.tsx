@@ -159,6 +159,13 @@ export const Avatar: React.FC<AvatarProps> = ({
     };
   }, [isInsideWindow, state]);
 
+  useEffect(() => {
+    const preload = new Image();
+    preload.src = '/avatar-dragging.png';
+  }, []);
+
+  const avatarSrc = state === 'dragging' ? '/avatar-dragging.png' : '/avatar.png';
+
   return (
     <div
       ref={avatarContainerRef}
@@ -223,7 +230,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       {!useFallbackSvg ? (
         <div className="relative w-64 h-72 sm:w-72 sm:h-80 mx-auto flex items-end justify-center">
           <img
-            src="/avatar.png"
+            src={avatarSrc}
             alt="Waifiu"
             className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-all duration-300 drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)] ${
               state === 'speaking'
