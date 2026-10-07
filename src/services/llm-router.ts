@@ -159,6 +159,14 @@ export class LLMRouter {
     }
   }
 
+  private static readonly MAX_CONTEXT_TURNS = 10;
+  private static readonly MAX_OUTPUT_TOKENS = 250;
+
+  private static pruneContext(messages: ChatMessage[]): ChatMessage[] {
+    const valid = messages.filter((m) => m.content && m.content.trim().length > 0);
+    return valid.slice(-this.MAX_CONTEXT_TURNS);
+  }
+
   private static async streamFromProvider(
     provider: ProviderType,
     params: {
@@ -170,6 +178,7 @@ export class LLMRouter {
     }
   ): Promise<string> {
     const { messages, settings, parentSignal, onChunk, modelOverride } = params;
+    const prunedMessages = this.pruneContext(messages);
 
     // Timeout controller for 6s first token
     const timeoutController = new AbortController();
@@ -196,15 +205,15 @@ export class LLMRouter {
     try {
       switch (provider) {
         case 'gemini':
-          return await this.streamGemini(messages, settings, combinedSignal, markFirstToken, onChunk, modelOverride);
+          return await this.streamGemini(prunedMessages, settings, combinedSignal, markFirstToken, onChunk, modelOverride);
         case 'openai':
-          return await this.streamOpenAI(messages, settings, combinedSignal, markFirstToken, onChunk);
+          return await this.streamOpenAI(prunedMessages, settings, combinedSignal, markFirstToken, onChunk);
         case 'claude':
-          return await this.streamClaude(messages, settings, combinedSignal, markFirstToken, onChunk);
+          return await this.streamClaude(prunedMessages, settings, combinedSignal, markFirstToken, onChunk);
         case 'ollama':
-          return await this.streamOllama(messages, settings, combinedSignal, markFirstToken, onChunk);
+          return await this.streamOllama(prunedMessages, settings, combinedSignal, markFirstToken, onChunk);
         case 'baseten':
-          return await this.streamBaseten(messages, settings, combinedSignal, markFirstToken, onChunk);
+          return await this.streamBaseten(prunedMessages, settings, combinedSignal, markFirstToken, onChunk);
         default:
           throw new Error(`Unsupported provider: ${provider}`);
       }
@@ -227,13 +236,29 @@ export class LLMRouter {
     const apiKey = settings.geminiApiKey.trim();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`;
 
-    const validMessages = messages.filter((m) => m.content && m.content.trim().length > 0);
-    const contents = validMessages.map((m) => ({
+    const contents = messages.map((m) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     }));
 
-    const requestBody: any = { contents };
+    // Disable hidden thinking for 2.5 and 3.x models to ensure immediate (<300ms) first token response
+    const isThinkingModel = model.includes('2.5') || model.includes('3.') || model.includes('thinking');
+    const generationConfig: any = {
+      maxOutputTokens: this.MAX_OUTPUT_TOKENS,
+      temperature: 0.7,
+    };
+
+    if (isThinkingModel) {
+      generationConfig.thinkingConfig = {
+        thinkingBudget: 0,
+      };
+    }
+
+    const requestBody: any = {
+      contents,
+      generationConfig,
+    };
+
     if (settings.systemPrompt?.trim()) {
       requestBody.system_instruction = {
         parts: [{ text: settings.systemPrompt.trim() }],
@@ -320,6 +345,7 @@ export class LLMRouter {
       body: JSON.stringify({
         model,
         messages: formattedMessages,
+        max_tokens: this.MAX_OUTPUT_TOKENS,
         stream: true,
       }),
       signal,
@@ -397,7 +423,7 @@ export class LLMRouter {
         model,
         system: settings.systemPrompt,
         messages: formattedMessages,
-        max_tokens: 1024,
+        max_tokens: this.MAX_OUTPUT_TOKENS,
         stream: true,
       }),
       signal,
@@ -468,6 +494,9 @@ export class LLMRouter {
       body: JSON.stringify({
         model,
         messages: formattedMessages,
+        options: {
+          num_predict: this.MAX_OUTPUT_TOKENS,
+        },
         stream: true,
       }),
       signal,
@@ -541,6 +570,7 @@ export class LLMRouter {
       body: JSON.stringify({
         model: modelId,
         messages: formattedMessages,
+        max_tokens: this.MAX_OUTPUT_TOKENS,
         stream: true,
       }),
       signal,
