@@ -164,7 +164,7 @@ export const App: React.FC = () => {
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-between p-3 select-none overflow-hidden bg-transparent">
       {/* Top Bar with window controls */}
-      <div className="w-full flex items-center justify-between px-2 pt-1 pb-2 z-40">
+      <div className="w-full flex items-center justify-between px-2 pt-1 pb-1 z-40">
         <div data-tauri-drag-region className="flex-1 h-6 cursor-move" />
         <WindowControls
           alwaysOnTop={settings.alwaysOnTop}
@@ -172,8 +172,20 @@ export const App: React.FC = () => {
         />
       </div>
 
-      {/* Collapsible Chat Window */}
+      {/* Prominent Waifu Avatar in Center/Top */}
       <div className="flex-1 w-full flex items-center justify-center my-1 z-30">
+        <Avatar
+          state={avatarState}
+          isChatOpen={isChatOpen}
+          variant={settings.avatarVariant}
+          onToggleChat={() => setIsChatOpen((prev) => !prev)}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        />
+      </div>
+
+      {/* Visual Novel Dialogue Box at Bottom */}
+      <div className="w-full flex flex-col items-center justify-end pb-1 z-40">
         {isChatOpen ? (
           <ChatWindow
             messages={messages}
@@ -185,22 +197,13 @@ export const App: React.FC = () => {
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
         ) : (
-          <div className="text-[11px] text-purple-300/80 bg-slate-950/60 px-3 py-1 rounded-full border border-purple-500/20 backdrop-blur-md animate-pulse">
-            Hacé clic en el avatar para abrir el chat
-          </div>
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="text-[11px] text-purple-200 hover:text-white bg-slate-950/80 hover:bg-slate-900 px-4 py-1.5 rounded-full border border-purple-500/40 backdrop-blur-md animate-pulse cursor-pointer shadow-lg transition-colors"
+          >
+            💬 Abrir diálogo
+          </button>
         )}
-      </div>
-
-      {/* Avatar Container at bottom */}
-      <div className="w-full flex justify-center pb-2 z-40">
-        <Avatar
-          state={avatarState}
-          isChatOpen={isChatOpen}
-          variant={settings.avatarVariant}
-          onToggleChat={() => setIsChatOpen((prev) => !prev)}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        />
       </div>
 
       {/* Settings Modal */}

@@ -22,19 +22,19 @@ export const Avatar: React.FC<AvatarProps> = ({
   const [mouthOpen, setMouthOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Periodic blinking during idle or speaking
+  // Periodic blinking during idle, speaking, or dragging
   useEffect(() => {
     if (state === 'error' || state === 'thinking') return;
 
     const interval = setInterval(() => {
       setBlink(true);
-      setTimeout(() => setBlink(false), 160);
-    }, 3500 + Math.random() * 2000);
+      setTimeout(() => setBlink(false), 150);
+    }, 3200 + Math.random() * 2000);
 
     return () => clearInterval(interval);
   }, [state]);
 
-  // Mouth flapping animation when state is 'speaking'
+  // Mouth flapping animation during 'speaking'
   useEffect(() => {
     if (state !== 'speaking') {
       setMouthOpen(false);
@@ -43,238 +43,350 @@ export const Avatar: React.FC<AvatarProps> = ({
 
     const interval = setInterval(() => {
       setMouthOpen((prev) => !prev);
-    }, 130);
+    }, 120);
 
     return () => clearInterval(interval);
   }, [state]);
 
-  // Drag listeners
-  const handleMouseDown = () => {
-    onDragStart?.();
-  };
-
-  const handleMouseUp = () => {
-    onDragEnd?.();
-  };
-
   return (
     <div
       data-tauri-drag-region
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
+      onMouseDown={() => onDragStart?.()}
+      onMouseUp={() => onDragEnd?.()}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onToggleChat}
-      className={`relative select-none cursor-grab active:cursor-grabbing transition-transform duration-300 filter drop-shadow-xl ${
+      className={`relative select-none cursor-grab active:cursor-grabbing transition-transform duration-300 filter drop-shadow-2xl ${
         state === 'dragging' ? 'scale-105 -translate-y-2' : ''
-      } ${isHovered ? 'scale-105' : 'scale-100'}`}
-      title="Click to toggle chat, drag to move"
+      } ${isHovered ? 'scale-102' : 'scale-100'}`}
+      title="Hacé clic para alternar diálogo, arrastrá para mover"
     >
-      {/* State Bubble / Indicator */}
-      <div className="absolute -top-6 left-1/2 -translate-x-1/2 pointer-events-none z-20">
+      {/* Floating State Badge */}
+      <div className="absolute -top-3 left-1/2 -translate-x-1/2 pointer-events-none z-30">
         {state === 'thinking' && (
-          <div className="bg-amber-500/90 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold shadow-lg animate-pulse flex items-center gap-1 border border-amber-300/50">
-            <span>Thinking</span>
-            <span className="flex gap-0.5">
-              <span className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-              <span className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-              <span className="w-1 h-1 bg-white rounded-full animate-bounce"></span>
+          <div className="bg-purple-900/90 text-purple-200 text-[11px] px-3 py-1 rounded-full font-bold shadow-lg animate-pulse flex items-center gap-1.5 border border-purple-400/50 backdrop-blur-md">
+            <span>Pensando</span>
+            <span className="flex gap-1">
+              <span className="w-1.5 h-1.5 bg-purple-300 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+              <span className="w-1.5 h-1.5 bg-purple-300 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+              <span className="w-1.5 h-1.5 bg-purple-300 rounded-full animate-bounce"></span>
             </span>
           </div>
         )}
 
         {state === 'speaking' && (
-          <div className="bg-purple-600/90 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold shadow-lg animate-bounce flex items-center gap-1 border border-purple-300/50">
-            <span>Speaking...</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+          <div className="bg-pink-600/90 text-white text-[11px] px-3 py-1 rounded-full font-bold shadow-lg animate-bounce flex items-center gap-1.5 border border-pink-300/50 backdrop-blur-md">
+            <span>Hablando...</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping"></span>
           </div>
         )}
 
         {state === 'error' && (
-          <div className="bg-rose-600/90 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold shadow-lg flex items-center gap-1 border border-rose-300/50">
-            <span>(＞﹏＜) Oops!</span>
+          <div className="bg-rose-700/90 text-white text-[11px] px-3 py-1 rounded-full font-bold shadow-lg flex items-center gap-1.5 border border-rose-300/50 backdrop-blur-md">
+            <span>(＞﹏＜) ¡Ups!</span>
           </div>
         )}
 
         {state === 'dragging' && (
-          <div className="bg-cyan-600/90 text-white text-[10px] px-2.5 py-0.5 rounded-full font-bold shadow-lg flex items-center gap-1 border border-cyan-300/50">
-            <span>(°o°) Wheee!</span>
+          <div className="bg-indigo-600/90 text-white text-[11px] px-3 py-1 rounded-full font-bold shadow-lg flex items-center gap-1.5 border border-indigo-300/50 backdrop-blur-md">
+            <span>(⁄ ⁄&gt;⁄ ▽ ⁄&lt;⁄ ⁄) ¡Soltame!</span>
           </div>
         )}
       </div>
 
-      {/* Halo / Glow Effect depending on state */}
+      {/* Magical Aura Glow */}
       <div
-        className={`absolute inset-0 rounded-full blur-xl transition-opacity duration-500 pointer-events-none ${
+        className={`absolute inset-4 rounded-full blur-2xl transition-opacity duration-500 pointer-events-none ${
           state === 'thinking'
-            ? 'bg-amber-400/40 opacity-100 animate-pulse'
+            ? 'bg-purple-500/35 opacity-100 animate-pulse'
             : state === 'speaking'
-            ? 'bg-purple-500/50 opacity-100 animate-pulse-glow'
+            ? 'bg-pink-500/40 opacity-100 animate-pulse-glow'
             : state === 'error'
             ? 'bg-rose-500/40 opacity-100'
-            : 'bg-indigo-500/20 opacity-60'
+            : 'bg-indigo-500/25 opacity-70'
         }`}
       />
 
-      {/* SVG Avatar Character */}
-      <div className="relative w-36 h-36 mx-auto">
+      {/* ANIME WAIFU SVG CHARACTER */}
+      <div className="relative w-64 h-64 mx-auto">
         <svg
-          viewBox="0 0 200 200"
+          viewBox="0 0 320 320"
           className={`w-full h-full transform transition-all duration-300 ${
             state === 'idle' ? 'animate-bounce-subtle' : ''
           }`}
         >
           <defs>
-            {/* Linear gradients */}
-            <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#c084fc" />
-              <stop offset="100%" stopColor="#7e22ce" />
+            {/* Hair Gradients */}
+            <linearGradient id="hairMain" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#a855f7" />
+              <stop offset="60%" stopColor="#7e22ce" />
+              <stop offset="100%" stopColor="#581c87" />
             </linearGradient>
-            <linearGradient id="earInnerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#f472b6" />
-              <stop offset="100%" stopColor="#fb7185" />
+
+            <linearGradient id="hairHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#e9d5ff" />
+              <stop offset="100%" stopColor="#c084fc" />
             </linearGradient>
-            <linearGradient id="eyeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#38bdf8" />
-              <stop offset="100%" stopColor="#0284c7" />
+
+            {/* Skin Gradient */}
+            <linearGradient id="skinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#fff1f2" />
+              <stop offset="100%" stopColor="#ffe4e6" />
+            </linearGradient>
+
+            {/* Eye Gradient */}
+            <linearGradient id="animeEyeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#ec4899" />
+              <stop offset="50%" stopColor="#a855f7" />
+              <stop offset="100%" stopColor="#3b0764" />
+            </linearGradient>
+
+            {/* Outfit Gradient */}
+            <linearGradient id="outfitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#1e1b4b" />
+              <stop offset="100%" stopColor="#0f172a" />
+            </linearGradient>
+
+            {/* Ribbon Gradient */}
+            <linearGradient id="ribbonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#f43f5e" />
+              <stop offset="100%" stopColor="#be123c" />
             </linearGradient>
           </defs>
 
-          {/* Ears */}
-          {/* Left Ear */}
+          {/* 1. BACK HAIR (Long twintails / locks) */}
           <path
-            d="M 50 85 L 35 25 L 85 55 Z"
-            fill="url(#bodyGrad)"
-            stroke="#581c87"
+            d="M 85 140 C 40 180, 25 240, 50 300 C 65 310, 85 270, 95 230 C 105 190, 100 160, 95 140 Z"
+            fill="url(#hairMain)"
+          />
+          <path
+            d="M 235 140 C 280 180, 295 240, 270 300 C 255 310, 235 270, 225 230 C 215 190, 220 160, 225 140 Z"
+            fill="url(#hairMain)"
+          />
+
+          {/* 2. CAT EARS / ACCESSORIES */}
+          {/* Left Cat Ear */}
+          <path
+            d="M 90 95 L 60 25 L 130 65 Z"
+            fill="url(#hairMain)"
+            stroke="#3b0764"
             strokeWidth="3"
             strokeLinejoin="round"
           />
-          <path d="M 52 75 L 42 35 L 75 57 Z" fill="url(#earInnerGrad)" />
+          <path d="M 85 85 L 70 40 L 115 65 Z" fill="#fda4af" />
 
-          {/* Right Ear */}
+          {/* Right Cat Ear */}
           <path
-            d="M 150 85 L 165 25 L 115 55 Z"
-            fill="url(#bodyGrad)"
-            stroke="#581c87"
+            d="M 230 95 L 260 25 L 190 65 Z"
+            fill="url(#hairMain)"
+            stroke="#3b0764"
             strokeWidth="3"
             strokeLinejoin="round"
           />
-          <path d="M 148 75 L 158 35 L 125 57 Z" fill="url(#earInnerGrad)" />
+          <path d="M 235 85 L 250 40 L 205 65 Z" fill="#fda4af" />
 
-          {/* Head & Body Base */}
+          {/* 3. BODY & OUTFIT (Collar + Ribbon) */}
+          <path
+            d="M 120 230 L 90 310 L 230 310 L 200 230 Z"
+            fill="url(#outfitGrad)"
+            stroke="#3b0764"
+            strokeWidth="2"
+          />
+          {/* Sailor collar flap */}
+          <path
+            d="M 115 230 L 160 265 L 205 230 L 160 242 Z"
+            fill="#ffffff"
+            stroke="#cbd5e1"
+            strokeWidth="1.5"
+          />
+          {/* Red Ribbon */}
+          <path
+            d="M 148 245 L 135 275 L 155 260 L 160 278 L 165 260 L 185 275 L 172 245 Z"
+            fill="url(#ribbonGrad)"
+          />
+          <circle cx="160" cy="250" r="5" fill="#fbbf24" stroke="#d97706" strokeWidth="1" />
+
+          {/* 4. NECK & FACE BASE */}
+          <rect x="148" y="200" width="24" height="35" fill="url(#skinGrad)" rx="6" />
+          <path
+            d="M 105 130 C 105 75, 215 75, 215 130 C 215 185, 175 225, 160 225 C 145 225, 105 185, 105 130 Z"
+            fill="url(#skinGrad)"
+            stroke="#fecdd3"
+            strokeWidth="1.5"
+          />
+
+          {/* 5. CHEEKS BLUSH */}
           <ellipse
-            cx="100"
-            cy="115"
-            rx="68"
-            ry="60"
-            fill="url(#bodyGrad)"
-            stroke="#581c87"
-            strokeWidth="4"
+            cx="128"
+            cy="172"
+            rx="12"
+            ry="6"
+            fill="#fb7185"
+            opacity={state === 'dragging' ? '0.85' : '0.55'}
+          />
+          <ellipse
+            cx="192"
+            cy="172"
+            rx="12"
+            ry="6"
+            fill="#fb7185"
+            opacity={state === 'dragging' ? '0.85' : '0.55'}
           />
 
-          {/* Cheeks blush */}
-          <ellipse cx="62" cy="125" rx="10" ry="6" fill="#f472b6" opacity="0.6" />
-          <ellipse cx="138" cy="125" rx="10" ry="6" fill="#f472b6" opacity="0.6" />
-
-          {/* EYES */}
+          {/* 6. ANIME EYES */}
           {state === 'error' ? (
-            // Dizzy 'X X' eyes
-            <g stroke="#ffffff" strokeWidth="4" strokeLinecap="round">
-              <line x1="68" y1="98" x2="84" y2="114" />
-              <line x1="84" y1="98" x2="68" y2="114" />
-              <line x1="116" y1="98" x2="132" y2="114" />
-              <line x1="132" y1="98" x2="116" y2="114" />
+            // Dizzy spiral eyes (@_@)
+            <g stroke="#9333ea" strokeWidth="3" fill="none" strokeLinecap="round">
+              <path d="M 125 155 Q 135 145 140 155 T 130 165 T 145 160" />
+              <path d="M 175 155 Q 185 145 190 155 T 180 165 T 195 160" />
             </g>
           ) : blink ? (
-            // Closed/Blinking eyes '^ ^'
-            <g stroke="#ffffff" strokeWidth="4" strokeLinecap="round" fill="none">
-              <path d="M 66 108 Q 76 96 86 108" />
-              <path d="M 114 108 Q 124 96 134 108" />
+            // Cute closed anime eyes ( > < )
+            <g stroke="#3b0764" strokeWidth="3.5" strokeLinecap="round" fill="none">
+              <path d="M 120 158 Q 135 148 146 158" />
+              <path d="M 174 158 Q 185 148 200 158" />
             </g>
           ) : (
-            // Open Expressive Eyes
+            // Full anime big glossy eyes
             <g>
-              {/* Left Eye */}
-              <ellipse cx="76" cy="106" rx="12" ry="16" fill="#0f172a" />
-              <ellipse cx="76" cy="108" rx="10" ry="13" fill="url(#eyeGrad)" />
-              <circle cx="73" cy="101" r="5" fill="#ffffff" />
-              <circle cx="80" cy="112" r="2.5" fill="#ffffff" />
+              {/* Eyelashes / Upper lid */}
+              <path
+                d="M 118 152 Q 135 138 148 150"
+                stroke="#2e1065"
+                strokeWidth="4"
+                strokeLinecap="round"
+                fill="none"
+              />
+              <path
+                d="M 172 150 Q 185 138 202 152"
+                stroke="#2e1065"
+                strokeWidth="4"
+                strokeLinecap="round"
+                fill="none"
+              />
 
-              {/* Right Eye */}
-              <ellipse cx="124" cy="106" rx="12" ry="16" fill="#0f172a" />
-              <ellipse cx="124" cy="108" rx="10" ry="13" fill="url(#eyeGrad)" />
-              <circle cx="121" cy="101" r="5" fill="#ffffff" />
-              <circle cx="128" cy="112" r="2.5" fill="#ffffff" />
+              {/* Left Eye Iris */}
+              <ellipse cx="134" cy="158" rx="11" ry="15" fill="url(#animeEyeGrad)" />
+              {/* Pupil */}
+              <ellipse cx="134" cy="160" rx="6" ry="8" fill="#1e1b4b" />
+              {/* Eye Highlights */}
+              <circle cx="130" cy="152" r="4.5" fill="#ffffff" />
+              <circle cx="137" cy="164" r="2.5" fill="#ffffff" />
+              <circle cx="132" cy="167" r="1.5" fill="#ffffff" />
+
+              {/* Right Eye Iris */}
+              <ellipse cx="186" cy="158" rx="11" ry="15" fill="url(#animeEyeGrad)" />
+              {/* Pupil */}
+              <ellipse cx="186" cy="160" rx="6" ry="8" fill="#1e1b4b" />
+              {/* Eye Highlights */}
+              <circle cx="182" cy="152" r="4.5" fill="#ffffff" />
+              <circle cx="189" cy="164" r="2.5" fill="#ffffff" />
+              <circle cx="184" cy="167" r="1.5" fill="#ffffff" />
             </g>
           )}
 
-          {/* Tiny Nose */}
-          <polygon points="100,118 97,122 103,122" fill="#f472b6" />
+          {/* Eyebrows */}
+          <path
+            d="M 122 140 Q 134 133 145 140"
+            stroke="#581c87"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M 175 140 Q 186 133 198 140"
+            stroke="#581c87"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            fill="none"
+          />
 
-          {/* MOUTH */}
+          {/* Tiny Nose */}
+          <circle cx="160" cy="170" r="1.5" fill="#fb7185" />
+
+          {/* 7. MOUTH */}
           {state === 'speaking' ? (
             mouthOpen ? (
-              // Open mouth talking
-              <ellipse cx="100" cy="132" rx="7" ry="9" fill="#be185d" stroke="#581c87" strokeWidth="2" />
+              // Open cheerful talking anime mouth
+              <path
+                d="M 152 182 Q 160 198 168 182 Z"
+                fill="#f43f5e"
+                stroke="#881337"
+                strokeWidth="1.5"
+              />
             ) : (
-              // Slightly open mouth
-              <ellipse cx="100" cy="130" rx="5" ry="3" fill="#be185d" />
+              // Open subtle anime mouth
+              <ellipse cx="160" cy="182" rx="4" ry="2.5" fill="#f43f5e" />
             )
           ) : state === 'error' ? (
-            // Wavy mouth
+            // Wavy / troubled mouth
             <path
-              d="M 92 133 Q 96 137 100 133 Q 104 130 108 133"
-              stroke="#4c0519"
-              strokeWidth="2.5"
+              d="M 153 184 Q 157 188 160 184 Q 163 181 167 184"
+              stroke="#881337"
+              strokeWidth="2"
               fill="none"
               strokeLinecap="round"
             />
           ) : state === 'thinking' ? (
-            // Small curious mouth 'o'
-            <circle cx="100" cy="131" r="3.5" fill="#4c0519" />
+            // Cute small 'o' mouth
+            <circle cx="160" cy="183" r="3" fill="#be123c" />
           ) : (
-            // Cute cat smile ':3'
+            // Sweet gentle smile
             <path
-              d="M 92 128 Q 96 133 100 129 Q 104 133 108 128"
-              stroke="#581c87"
-              strokeWidth="2.5"
+              d="M 154 182 Q 160 187 166 182"
+              stroke="#881337"
+              strokeWidth="2"
               fill="none"
               strokeLinecap="round"
             />
           )}
 
-          {/* Cute Paws at bottom */}
-          <ellipse
-            cx="75"
-            cy="165"
-            rx="14"
-            ry="9"
-            fill="#e9d5ff"
-            stroke="#581c87"
-            strokeWidth="3"
-            className={state === 'dragging' ? 'translate-y-2 transition-transform' : ''}
+          {/* 8. FRONT HAIR / BANGS */}
+          {/* Left Hair lock */}
+          <path
+            d="M 100 120 C 100 70, 160 60, 160 60 C 160 60, 130 95, 120 145 C 115 170, 110 200, 105 210 C 95 180, 95 140, 100 120 Z"
+            fill="url(#hairMain)"
           />
+          {/* Right Hair lock */}
+          <path
+            d="M 220 120 C 220 70, 160 60, 160 60 C 160 60, 190 95, 200 145 C 205 170, 210 200, 215 210 C 225 180, 225 140, 220 120 Z"
+            fill="url(#hairMain)"
+          />
+          {/* Center Bangs */}
+          <path
+            d="M 125 78 C 140 100, 145 125, 145 125 C 150 115, 160 115, 165 128 C 170 110, 185 100, 195 78 C 160 65, 140 68, 125 78 Z"
+            fill="url(#hairMain)"
+          />
+          {/* Hair shine band (Anime gloss) */}
           <ellipse
-            cx="125"
-            cy="165"
-            rx="14"
-            ry="9"
-            fill="#e9d5ff"
+            cx="160"
+            cy="90"
+            rx="38"
+            ry="6"
+            fill="url(#hairHighlight)"
+            opacity="0.6"
+            transform="rotate(-5 160 90)"
+          />
+
+          {/* Cute Ahoge (hair strand antenna on top) */}
+          <path
+            d="M 160 60 Q 155 25 175 18 Q 185 15 175 32 Q 165 45 160 60"
+            fill="url(#hairMain)"
             stroke="#581c87"
-            strokeWidth="3"
-            className={state === 'dragging' ? 'translate-y-2 transition-transform' : ''}
+            strokeWidth="1.5"
+            className={state === 'thinking' ? 'animate-wiggle' : ''}
           />
         </svg>
       </div>
 
-      {/* Floating Chat Toggle Badge */}
+      {/* Floating Chat Toggle Icon */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           onToggleChat();
         }}
-        className="absolute -bottom-1 right-2 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white p-1.5 rounded-full shadow-lg border border-purple-400 transition-all flex items-center justify-center cursor-pointer z-30"
-        title={isChatOpen ? 'Collapse Chat' : 'Open Chat'}
+        className="absolute bottom-2 right-4 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white p-2 rounded-full shadow-lg border border-purple-400 transition-all flex items-center justify-center cursor-pointer z-30"
+        title={isChatOpen ? 'Ocultar Diálogo' : 'Mostrar Diálogo'}
       >
         <span className="text-xs">{isChatOpen ? '✕' : '💬'}</span>
       </button>
