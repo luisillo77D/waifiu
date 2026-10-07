@@ -1,4 +1,5 @@
 import { AppSettings, ChatMessage, ProviderType } from '../types';
+import { searchWeb, formatWebSearchContext } from './web-search';
 
 export interface StreamChatOptions {
   messages: ChatMessage[];
@@ -14,6 +15,27 @@ const FIRST_TOKEN_TIMEOUT_MS = 6000; // 6 seconds per spec
 export class LLMRouter {
   static async streamWithFallback(options: StreamChatOptions): Promise<{ provider: ProviderType; model: string; text: string }> {
     const { messages, settings, signal, onChunk, onProviderSelected, onProviderFailed } = options;
+
+    // Optional free live web research via DuckDuckGo RAG (works with all providers without quotas)
+    let routedMessages = messages;
+    if (settings.webSearch === true && !signal?.aborted) {
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user' && m.content.trim().length > 0);
+      if (lastUserMsg) {
+        try {
+          const snippets = await searchWeb(lastUserMsg.content);
+          if (snippets.length > 0) {
+            const contextText = formatWebSearchContext(snippets);
+            routedMessages = messages.map((m) =>
+              m.id === lastUserMsg.id
+                ? { ...m, content: `${m.content}${contextText}` }
+                : m
+            );
+          }
+        } catch (err) {
+          console.warn('[LLMRouter] DuckDuckGo search error:', err);
+        }
+      }
+    }
 
     const chain = settings.fallbackChain && settings.fallbackChain.length > 0
       ? settings.fallbackChain
@@ -47,7 +69,7 @@ export class LLMRouter {
             onProviderSelected?.('gemini', modelName);
 
             const resultText = await this.streamFromProvider('gemini', {
-              messages,
+              messages: routedMessages,
               settings,
               parentSignal: signal,
               onChunk,
@@ -76,7 +98,7 @@ export class LLMRouter {
         onProviderSelected?.(provider, modelName);
 
         const resultText = await this.streamFromProvider(provider, {
-          messages,
+          messages: routedMessages,
           settings,
           parentSignal: signal,
           onChunk,
@@ -258,11 +280,6 @@ export class LLMRouter {
       contents,
       generationConfig,
     };
-
-    // Live web research via Google Search Grounding (opt-in only to preserve strict RPM quota)
-    if (settings.webSearch === true) {
-      requestBody.tools = [{ google_search: {} }];
-    }
 
     if (settings.systemPrompt?.trim()) {
       requestBody.system_instruction = {

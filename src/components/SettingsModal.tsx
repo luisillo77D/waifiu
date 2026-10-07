@@ -211,7 +211,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onSave, 
                     <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                     <div>
                       <span className="text-[11px] font-medium text-slate-200 block leading-tight">Búsqueda web en vivo</span>
-                      <span className="text-[9px] text-slate-500 block leading-tight">Google Search Grounding para datos recientes</span>
+                      <span className="text-[9px] text-slate-500 block leading-tight">DuckDuckGo RAG para datos recientes (100% Gratis)</span>
                     </div>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
