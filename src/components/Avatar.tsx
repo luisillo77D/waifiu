@@ -160,11 +160,18 @@ export const Avatar: React.FC<AvatarProps> = ({
   }, [isInsideWindow, state]);
 
   useEffect(() => {
-    const preload = new Image();
-    preload.src = '/avatar-dragging.png';
+    ['/avatar-dragging.png', '/avatar-thinking.png'].forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
   }, []);
 
-  const avatarSrc = state === 'dragging' ? '/avatar-dragging.png' : '/avatar.png';
+  const avatarSrc =
+    state === 'dragging'
+      ? '/avatar-dragging.png'
+      : state === 'thinking'
+      ? '/avatar-thinking.png'
+      : '/avatar.png';
 
   return (
     <div
@@ -228,13 +235,13 @@ export const Avatar: React.FC<AvatarProps> = ({
 
       {/* ANIME WAIFU CHARACTER (ILLUSTRATION OR SVG FALLBACK) */}
       {!useFallbackSvg ? (
-        <div className="relative w-64 h-72 sm:w-72 sm:h-80 mx-auto flex items-end justify-center">
+        <div className="relative h-72 sm:h-80 aspect-[896/1200] mx-auto flex items-end justify-center">
           <img
             src={avatarSrc}
             alt="Waifiu"
-            className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-all duration-300 drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)] ${
+            className={`w-full h-full object-contain pointer-events-none select-none transition-all duration-300 drop-shadow-[0_4px_12px_rgba(0,0,0,0.35)] ${
               state === 'speaking'
-                ? 'animate-pulse scale-[1.03]'
+                ? 'animate-pulse scale-[1.02]'
                 : state === 'idle'
                 ? 'animate-bounce-subtle'
                 : state === 'dragging'
@@ -243,6 +250,34 @@ export const Avatar: React.FC<AvatarProps> = ({
             }`}
             onError={() => setUseFallbackSvg(true)}
           />
+
+          {/* Animated Anime Mouth Flap during speech */}
+          {state === 'speaking' && mouthOpen && (
+            <div
+              className="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2 transition-transform duration-75"
+              style={{ top: '32.1%', left: '51.1%' }}
+            >
+              <svg width="18" height="13" viewBox="0 0 24 18" className="overflow-visible drop-shadow-xs">
+                {/* Lip Contour / Cavity */}
+                <path
+                  d="M 2 5 Q 12 1 22 5 C 21 16 3 16 2 5 Z"
+                  fill="#8a272f"
+                  stroke="#571c21"
+                  strokeWidth="1.2"
+                />
+                {/* Soft Tongue / Warm Interior */}
+                <path
+                  d="M 4 9.5 Q 12 6.5 20 9.5 C 19 15 5 15 4 9.5 Z"
+                  fill="#df6b74"
+                />
+                {/* Upper White Tooth Line */}
+                <path
+                  d="M 5 4.8 Q 12 3 19 4.8 Q 12 6.8 5 4.8 Z"
+                  fill="#ffffff"
+                />
+              </svg>
+            </div>
+          )}
         </div>
       ) : (
         <div className="relative w-64 h-64 mx-auto">
