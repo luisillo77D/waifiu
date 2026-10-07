@@ -34,6 +34,43 @@ export class LLMRouter {
         continue;
       }
 
+      // Multi-model fallback within Gemini
+      if (provider === 'gemini') {
+        const geminiModels = this.getGeminiModels(settings);
+
+        for (const modelName of geminiModels) {
+          if (signal?.aborted) {
+            throw new DOMException('Aborted by user', 'AbortError');
+          }
+
+          try {
+            onProviderSelected?.('gemini', modelName);
+
+            const resultText = await this.streamFromProvider('gemini', {
+              messages,
+              settings,
+              parentSignal: signal,
+              onChunk,
+              modelOverride: modelName,
+            });
+
+            return {
+              provider: 'gemini',
+              model: modelName,
+              text: resultText,
+            };
+          } catch (err: any) {
+            const errorMsg = err?.message || String(err);
+            console.warn(`[LLMRouter] Gemini model ${modelName} failed: ${errorMsg}`);
+            onProviderFailed?.('gemini', `Model ${modelName}: ${errorMsg}`);
+            errors.push({ provider: 'gemini', error: `${modelName}: ${errorMsg}` });
+            // Continue to next configured Gemini model
+          }
+        }
+        // If all Gemini models failed, continue to the next provider in the fallback chain
+        continue;
+      }
+
       try {
         const modelName = this.getModelName(provider, settings);
         onProviderSelected?.(provider, modelName);
@@ -98,10 +135,19 @@ export class LLMRouter {
     }
   }
 
+  public static getGeminiModels(settings: AppSettings): string[] {
+    const raw = settings.geminiModel?.trim() || 'gemini-3.1-flash-lite';
+    const models = raw
+      .split(',')
+      .map((m) => m.trim().replace(/^models\//, ''))
+      .filter(Boolean);
+    return models.length > 0 ? models : ['gemini-3.1-flash-lite'];
+  }
+
   private static getModelName(provider: ProviderType, settings: AppSettings): string {
     switch (provider) {
       case 'gemini':
-        return (settings.geminiModel || 'gemini-3.1-flash-lite').trim().replace(/^models\//, '');
+        return this.getGeminiModels(settings)[0];
       case 'openai':
         return settings.openaiModel || 'gpt-4o-mini';
       case 'claude':
@@ -120,9 +166,10 @@ export class LLMRouter {
       settings: AppSettings;
       parentSignal?: AbortSignal;
       onChunk: (chunk: string, accumulated: string) => void;
+      modelOverride?: string;
     }
   ): Promise<string> {
-    const { messages, settings, parentSignal, onChunk } = params;
+    const { messages, settings, parentSignal, onChunk, modelOverride } = params;
 
     // Timeout controller for 6s first token
     const timeoutController = new AbortController();
@@ -149,7 +196,7 @@ export class LLMRouter {
     try {
       switch (provider) {
         case 'gemini':
-          return await this.streamGemini(messages, settings, combinedSignal, markFirstToken, onChunk);
+          return await this.streamGemini(messages, settings, combinedSignal, markFirstToken, onChunk, modelOverride);
         case 'openai':
           return await this.streamOpenAI(messages, settings, combinedSignal, markFirstToken, onChunk);
         case 'claude':
@@ -172,9 +219,10 @@ export class LLMRouter {
     settings: AppSettings,
     signal: AbortSignal,
     onFirstToken: () => void,
-    onChunk: (chunk: string, accumulated: string) => void
+    onChunk: (chunk: string, accumulated: string) => void,
+    modelOverride?: string
   ): Promise<string> {
-    const rawModel = settings.geminiModel?.trim() || 'gemini-3.1-flash-lite';
+    const rawModel = modelOverride || this.getGeminiModels(settings)[0];
     const model = rawModel.replace(/^models\//, '').trim();
     const apiKey = settings.geminiApiKey.trim();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`;
@@ -550,8 +598,8 @@ export class LLMRouter {
     try {
       switch (provider) {
         case 'gemini': {
-          const rawModel = settings.geminiModel?.trim() || 'gemini-3.1-flash-lite';
-          const model = rawModel.replace(/^models\//, '').trim();
+          const models = this.getGeminiModels(settings);
+          const model = models[0];
           const apiKey = settings.geminiApiKey?.trim();
           if (!apiKey) {
             return { ok: false, message: 'Falta ingresar la API Key de Gemini' };
@@ -586,10 +634,14 @@ export class LLMRouter {
             };
           }
 
+          const fallbackInfo = models.length > 1
+            ? ` | ${models.length - 1} de respaldo: ${models.slice(1).join(', ')}`
+            : '';
+
           return {
             ok: true,
             status: response.status,
-            message: `¡Conexión exitosa con Google (${model})! (HTTP ${response.status})`,
+            message: `¡Conexión exitosa con Google (${model})! (HTTP ${response.status})${fallbackInfo}`,
           };
         }
 

@@ -192,14 +192,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onSave, 
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">Modelo (ej: gemini-3.1-flash-lite, gemini-3.8-flash)</label>
+                  <label className="text-[10px] text-slate-400 block mb-1">
+                    Modelos (orden de prioridad separados por coma)
+                  </label>
                   <input
                     type="text"
                     value={current.geminiModel}
                     onChange={(e) => setCurrent({ ...current, geminiModel: e.target.value })}
-                    placeholder="gemini-3.1-flash-lite"
+                    placeholder="gemini-3.1-flash-lite, gemini-3.8-flash"
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-100 outline-none selectable-text"
                   />
+                  <span className="text-[10px] text-slate-500 block mt-1">
+                    Reintento automático: si el primero da error o timeout (&gt;6s), intenta con el siguiente.
+                  </span>
                 </div>
                 {renderTestButtonAndResult('gemini')}
               </div>
