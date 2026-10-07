@@ -102,6 +102,7 @@ pub struct ActiveWindowInfo {
 fn get_active_window() -> Result<Option<ActiveWindowInfo>, String> {
     #[cfg(target_os = "linux")]
     {
+        // 1. Try currently active window
         let output = std::process::Command::new("hyprctl")
             .args(["activewindow", "-j"])
             .output();
@@ -113,18 +114,51 @@ fn get_active_window() -> Result<Option<ActiveWindowInfo>, String> {
                     let title = val.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
                     let initial_title = val.get("initialTitle").and_then(|v| v.as_str()).map(|s| s.to_string());
 
-                    if class.is_empty() && title.is_empty() {
-                        return Ok(None);
+                    if !class.is_empty() && class != "app" && !title.to_lowercase().contains("waifiu") {
+                        return Ok(Some(ActiveWindowInfo {
+                            class,
+                            title,
+                            initial_title,
+                        }));
                     }
-                    if class == "app" || title.to_lowercase().contains("waifiu") {
-                        return Ok(None);
-                    }
+                }
+            }
+        }
 
-                    return Ok(Some(ActiveWindowInfo {
-                        class,
-                        title,
-                        initial_title,
-                    }));
+        // 2. If active window is waifiu itself (user clicked button/avatar), find previous window by lowest focusHistoryID
+        let clients_output = std::process::Command::new("hyprctl")
+            .args(["clients", "-j"])
+            .output();
+
+        if let Ok(out) = clients_output {
+            if out.status.success() {
+                if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
+                    if let Some(list) = val.as_array() {
+                        let mut candidates: Vec<_> = list
+                            .iter()
+                            .filter(|c| {
+                                let c_class = c.get("class").and_then(|v| v.as_str()).unwrap_or("");
+                                let c_title = c.get("title").and_then(|v| v.as_str()).unwrap_or("");
+                                !c_class.is_empty() && c_class != "app" && !c_title.to_lowercase().contains("waifiu")
+                            })
+                            .collect();
+
+                        candidates.sort_by_key(|c| {
+                            c.get("focusHistoryID").and_then(|v| v.as_i64()).unwrap_or(9999)
+                        });
+
+                        if let Some(top) = candidates.first() {
+                            let class = top.get("class").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            let title = top.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            let initial_title = top.get("initialTitle").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+                            return Ok(Some(ActiveWindowInfo {
+                                class,
+                                title,
+                                initial_title,
+                            }));
+                        }
+                    }
                 }
             }
         }

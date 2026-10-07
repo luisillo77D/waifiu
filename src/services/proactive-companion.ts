@@ -76,11 +76,10 @@ export class ProactiveCompanionEngine {
     }
 
     const windowInfo = await getActiveWindow();
-    if (!windowInfo || (!windowInfo.class && !windowInfo.title)) {
-      return false;
+    let activityDesc = 'en el escritorio relajándose o trabajando';
+    if (windowInfo && (windowInfo.class || windowInfo.title)) {
+      activityDesc = describeWindowActivity(windowInfo);
     }
-
-    const activityDesc = describeWindowActivity(windowInfo);
 
     // If same exact app as last comment and not forced, reduce frequency by 50%
     if (!force && this.lastActiveApp === activityDesc && Math.random() < 0.45) {

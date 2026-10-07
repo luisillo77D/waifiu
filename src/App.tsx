@@ -47,6 +47,7 @@ export const App: React.FC = () => {
           setLastContextActivity(contextDesc);
           setAvatarState('thinking');
           setIsChatOpen(true);
+          setIsStreaming(true);
         },
         onChunk: (_chunk, accumulated) => {
           setAvatarState('speaking');
@@ -72,6 +73,7 @@ export const App: React.FC = () => {
         onComplete: (fullText, contextDesc) => {
           setLastContextActivity(contextDesc);
           setAvatarState('speaking');
+          setIsStreaming(false);
           setMessages((prev) => {
             const hasStreaming = prev.some((m) => m.isStreaming);
             if (hasStreaming) {
@@ -98,6 +100,7 @@ export const App: React.FC = () => {
         },
         onError: (err) => {
           console.warn('[ProactiveEngine] Error:', err);
+          setIsStreaming(false);
           setAvatarState('idle');
         },
       }
