@@ -13,7 +13,7 @@ export const ALL_AVAILABLE_PROVIDERS: ProviderType[] = [
 
 export const DEFAULT_SETTINGS: AppSettings = {
   geminiApiKey: '',
-  geminiModel: 'gemini-2.5-flash',
+  geminiModel: 'gemini-3.1-flash-lite',
 
   basetenApiKey: '',
   basetenModelId: '',

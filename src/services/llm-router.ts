@@ -101,7 +101,7 @@ export class LLMRouter {
   private static getModelName(provider: ProviderType, settings: AppSettings): string {
     switch (provider) {
       case 'gemini':
-        return settings.geminiModel || 'gemini-2.5-flash';
+        return (settings.geminiModel || 'gemini-3.1-flash-lite').trim().replace(/^models\//, '');
       case 'openai':
         return settings.openaiModel || 'gpt-4o-mini';
       case 'claude':
@@ -174,31 +174,37 @@ export class LLMRouter {
     onFirstToken: () => void,
     onChunk: (chunk: string, accumulated: string) => void
   ): Promise<string> {
-    const model = settings.geminiModel || 'gemini-2.5-flash';
+    const rawModel = settings.geminiModel?.trim() || 'gemini-3.1-flash-lite';
+    const model = rawModel.replace(/^models\//, '').trim();
     const apiKey = settings.geminiApiKey.trim();
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`;
 
-    const contents = [
-      ...(settings.systemPrompt
-        ? [{ role: 'user', parts: [{ text: `[System Instructions]: ${settings.systemPrompt}` }] },
-           { role: 'model', parts: [{ text: 'Understood, I am your desktop companion ready to assist!' }] }]
-        : []),
-      ...messages.map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      })),
-    ];
+    const validMessages = messages.filter((m) => m.content && m.content.trim().length > 0);
+    const contents = validMessages.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+    const requestBody: any = { contents };
+    if (settings.systemPrompt?.trim()) {
+      requestBody.system_instruction = {
+        parts: [{ text: settings.systemPrompt.trim() }],
+      };
+    }
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents }),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify(requestBody),
       signal,
     });
 
     if (!response.ok) {
       const errBody = await response.text().catch(() => '');
-      throw new Error(`Gemini HTTP ${response.status}: ${errBody.slice(0, 200)}`);
+      throw new Error(`Gemini HTTP ${response.status} (${model}): ${errBody.slice(0, 300)}`);
     }
 
     if (!response.body) throw new Error('Gemini response body is null');
