@@ -10,13 +10,6 @@ interface AvatarProps {
   onDragEnd?: () => void;
 }
 
-interface CursorInfo {
-  cursor_x: number;
-  cursor_y: number;
-  window_x: number;
-  window_y: number;
-}
-
 export const Avatar: React.FC<AvatarProps> = ({
   state,
   onToggleChat,
@@ -28,10 +21,12 @@ export const Avatar: React.FC<AvatarProps> = ({
   const [blink, setBlink] = useState(false);
   const [mouthOpen, setMouthOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isInsideWindow, setIsInsideWindow] = useState(true);
   const [eyeOffset, setEyeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const avatarContainerRef = useRef<HTMLDivElement>(null);
   const isInsideWindowRef = useRef<boolean>(true);
+  const lastOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Periodic blinking during idle, speaking, or dragging
   useEffect(() => {
@@ -59,26 +54,24 @@ export const Avatar: React.FC<AvatarProps> = ({
     return () => clearInterval(interval);
   }, [state]);
 
-  // Local and Global Cursor Tracking Logic
+  // State-based gaze overrides
   useEffect(() => {
     if (state === 'error') {
       setEyeOffset({ x: 0, y: 0 });
-      return;
-    }
-    if (state === 'thinking') {
-      // Look thoughtfully upwards
+    } else if (state === 'thinking') {
       setEyeOffset({ x: -2.5, y: -4 });
-      return;
-    }
-    if (state === 'dragging') {
-      // Look upwards surprised
+    } else if (state === 'dragging') {
       setEyeOffset({ x: 0, y: -3.5 });
-      return;
     }
+  }, [state]);
 
-    // 1. Local cursor tracking within window
+  // 1. Local real-time cursor tracking (when cursor is inside window)
+  useEffect(() => {
+    if (state === 'error' || state === 'thinking' || state === 'dragging') return;
+
     const handleMouseMove = (e: MouseEvent) => {
       isInsideWindowRef.current = true;
+      setIsInsideWindow(true);
       if (!avatarContainerRef.current) return;
 
       const rect = avatarContainerRef.current.getBoundingClientRect();
@@ -91,66 +84,79 @@ export const Avatar: React.FC<AvatarProps> = ({
       const dist = Math.hypot(dx, dy);
 
       // Max offset range of 5.5px with gentle falloff
-      const clampedDist = Math.min(5.5, dist / 30);
-      setEyeOffset({
+      const clampedDist = Math.min(5.5, dist / 28);
+      const offset = {
         x: Math.cos(angle) * clampedDist,
         y: Math.sin(angle) * clampedDist,
-      });
+      };
+      lastOffsetRef.current = offset;
+      setEyeOffset(offset);
     };
 
     const handleMouseLeave = () => {
       isInsideWindowRef.current = false;
+      setIsInsideWindow(false);
+
+      // Follow-through: look in the direction the cursor exited for ~1.8s
+      const exitDirection = {
+        x: Math.max(-5.5, Math.min(5.5, lastOffsetRef.current.x * 1.15)),
+        y: Math.max(-5.5, Math.min(5.5, lastOffsetRef.current.y * 1.15)),
+      };
+      setEyeOffset(exitDirection);
     };
 
     const handleMouseEnter = () => {
       isInsideWindowRef.current = true;
+      setIsInsideWindow(true);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseleave', handleMouseLeave);
     document.addEventListener('mouseenter', handleMouseEnter);
 
-    // 2. Global OS cursor tracking when mouse leaves the app window
-    let globalIntervalId: any = null;
-
-    const pollGlobalCursor = async () => {
-      if (isInsideWindowRef.current) return;
-      if (!avatarContainerRef.current) return;
-
-      try {
-        const { invoke, isTauri } = await import('@tauri-apps/api/core');
-        if (!isTauri()) return;
-
-        const info = await invoke<CursorInfo>('get_cursor_info');
-        const rect = avatarContainerRef.current.getBoundingClientRect();
-
-        const eyeGlobalX = info.window_x + rect.left + rect.width * 0.5;
-        const eyeGlobalY = info.window_y + rect.top + rect.height * (158 / 320);
-
-        const dx = info.cursor_x - eyeGlobalX;
-        const dy = info.cursor_y - eyeGlobalY;
-        const angle = Math.atan2(dy, dx);
-        const dist = Math.hypot(dx, dy);
-
-        const clampedDist = Math.min(5.5, dist / 50);
-        setEyeOffset({
-          x: Math.cos(angle) * clampedDist,
-          y: Math.sin(angle) * clampedDist,
-        });
-      } catch {
-        // Fallback or window hidden
-      }
-    };
-
-    globalIntervalId = setInterval(pollGlobalCursor, 50); // 20 FPS polling when outside
-
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseleave', handleMouseLeave);
       document.removeEventListener('mouseenter', handleMouseEnter);
-      if (globalIntervalId) clearInterval(globalIntervalId);
     };
   }, [state]);
+
+  // 2. Autonomous organic gaze (when cursor is outside the window)
+  useEffect(() => {
+    if (isInsideWindow || state === 'error' || state === 'thinking' || state === 'dragging') return;
+
+    let timeoutId: any = null;
+
+    const organicWander = () => {
+      if (isInsideWindowRef.current) return;
+
+      // Natural micro-saccades (looking forward, soft side glance, attentive posture)
+      const naturalGazePoints = [
+        { x: 0, y: 0 },         // Looking forward attentively
+        { x: 2.8, y: -1.2 },    // Soft glance top-right
+        { x: -2.8, y: -1.2 },   // Soft glance top-left
+        { x: 3.2, y: 1.0 },     // Soft glance bottom-right
+        { x: -3.2, y: 1.0 },    // Soft glance bottom-left
+        { x: 0, y: -2.0 },      // Looking slightly up
+        { x: 1.8, y: 0 },       // Slight right
+        { x: -1.8, y: 0 },      // Slight left
+      ];
+
+      const chosenGaze = naturalGazePoints[Math.floor(Math.random() * naturalGazePoints.length)];
+      setEyeOffset(chosenGaze);
+
+      // Random delay between glances (2.5s to 4.2s)
+      const nextDelay = 2500 + Math.random() * 1700;
+      timeoutId = setTimeout(organicWander, nextDelay);
+    };
+
+    // First wander trigger after the initial exit follow-through (1.8s)
+    timeoutId = setTimeout(organicWander, 1800);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isInsideWindow, state]);
 
   return (
     <div
@@ -338,7 +344,7 @@ export const Avatar: React.FC<AvatarProps> = ({
             opacity={state === 'dragging' ? '0.85' : '0.55'}
           />
 
-          {/* 6. ANIME EYES WITH CURSOR TRACKING */}
+          {/* 6. ANIME EYES WITH ORGANIC GAZE */}
           {state === 'error' ? (
             // Dizzy spiral eyes (@_@)
             <g stroke="#9333ea" strokeWidth="3" fill="none" strokeLinecap="round">
@@ -352,7 +358,7 @@ export const Avatar: React.FC<AvatarProps> = ({
               <path d="M 174 158 Q 185 148 200 158" />
             </g>
           ) : (
-            // Full anime big glossy eyes with dynamic gaze tracking
+            // Full anime big glossy eyes with smooth organic gaze
             <g>
               {/* Eyelashes / Upper lid (fixed frame) */}
               <path
@@ -370,8 +376,15 @@ export const Avatar: React.FC<AvatarProps> = ({
                 fill="none"
               />
 
-              {/* Dynamic Left Eye Iris & Pupil */}
-              <g transform={`translate(${eyeOffset.x}, ${eyeOffset.y})`}>
+              {/* Dynamic Left Eye Iris & Pupil with CSS transition for organic gliding */}
+              <g
+                style={{
+                  transform: `translate(${eyeOffset.x}px, ${eyeOffset.y}px)`,
+                  transition: isInsideWindow
+                    ? 'none'
+                    : 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
+                }}
+              >
                 <ellipse cx="134" cy="158" rx="11" ry="15" fill="url(#animeEyeGrad)" />
                 <ellipse cx="134" cy="160" rx="6" ry="8" fill="#1e1b4b" />
                 <circle cx="130" cy="152" r="4.5" fill="#ffffff" />
@@ -379,8 +392,15 @@ export const Avatar: React.FC<AvatarProps> = ({
                 <circle cx="132" cy="167" r="1.5" fill="#ffffff" />
               </g>
 
-              {/* Dynamic Right Eye Iris & Pupil */}
-              <g transform={`translate(${eyeOffset.x}, ${eyeOffset.y})`}>
+              {/* Dynamic Right Eye Iris & Pupil with CSS transition */}
+              <g
+                style={{
+                  transform: `translate(${eyeOffset.x}px, ${eyeOffset.y}px)`,
+                  transition: isInsideWindow
+                    ? 'none'
+                    : 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
+                }}
+              >
                 <ellipse cx="186" cy="158" rx="11" ry="15" fill="url(#animeEyeGrad)" />
                 <ellipse cx="186" cy="160" rx="6" ry="8" fill="#1e1b4b" />
                 <circle cx="182" cy="152" r="4.5" fill="#ffffff" />
