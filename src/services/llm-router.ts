@@ -263,14 +263,13 @@ export class LLMRouter {
       parts: [{ text: m.content }],
     }));
 
-    // Disable hidden thinking for 2.5 and 3.x models to ensure immediate (<300ms) first token response
-    const isThinkingModel = model.includes('2.5') || model.includes('3.') || model.includes('thinking');
     const generationConfig: any = {
       maxOutputTokens: this.MAX_OUTPUT_TOKENS,
       temperature: 0.7,
     };
 
-    if (isThinkingModel) {
+    // Only apply thinkingConfig for models that explicitly feature reasoning/thinking
+    if (model.includes('thinking')) {
       generationConfig.thinkingConfig = {
         thinkingBudget: 0,
       };
@@ -296,6 +295,26 @@ export class LLMRouter {
       body: JSON.stringify(requestBody),
       signal,
     });
+
+    // If 400 INVALID_ARGUMENT occurs on stricter/lite models, retry with minimal safe payload
+    if (response.status === 400 && !signal.aborted) {
+      console.warn(`[LLMRouter] Gemini 400 on ${model}, retrying with plain payload...`);
+      const minimalBody: any = { contents };
+      if (settings.systemPrompt?.trim()) {
+        minimalBody.system_instruction = {
+          parts: [{ text: settings.systemPrompt.trim() }],
+        };
+      }
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify(minimalBody),
+        signal,
+      });
+    }
 
     // If transient 429 rate limit is hit, wait 1.5s backoff and retry once
     if (response.status === 429 && !signal.aborted) {
