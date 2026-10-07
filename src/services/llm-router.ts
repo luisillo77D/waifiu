@@ -542,6 +542,203 @@ export class LLMRouter {
     return accumulated;
   }
 
+  // --- TEST CONNECTION DIAGNOSTIC ---
+  public static async testProvider(
+    provider: ProviderType,
+    settings: AppSettings
+  ): Promise<{ ok: boolean; message: string; status?: number }> {
+    try {
+      switch (provider) {
+        case 'gemini': {
+          const rawModel = settings.geminiModel?.trim() || 'gemini-3.1-flash-lite';
+          const model = rawModel.replace(/^models\//, '').trim();
+          const apiKey = settings.geminiApiKey?.trim();
+          if (!apiKey) {
+            return { ok: false, message: 'Falta ingresar la API Key de Gemini' };
+          }
+
+          // Use both header and query param for maximum compatibility across environments
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': apiKey,
+            },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: 'hola' }] }],
+            }),
+          });
+
+          const bodyText = await response.text();
+          if (!response.ok) {
+            let errorMsg = bodyText;
+            try {
+              const json = JSON.parse(bodyText);
+              errorMsg = json.error?.message || json.error?.status || bodyText;
+            } catch {
+              // Non-JSON error body
+            }
+            return {
+              ok: false,
+              status: response.status,
+              message: `HTTP ${response.status} (${model}): ${errorMsg.slice(0, 250)}`,
+            };
+          }
+
+          return {
+            ok: true,
+            status: response.status,
+            message: `¡Conexión exitosa con Google (${model})! (HTTP ${response.status})`,
+          };
+        }
+
+        case 'baseten': {
+          const modelId = settings.basetenModelId?.trim();
+          const apiKey = settings.basetenApiKey?.trim();
+          if (!apiKey || !modelId) {
+            return { ok: false, message: 'Falta ingresar la API Key o Model ID de Baseten' };
+          }
+
+          const url = `https://model-${modelId}.api.baseten.co/v1/chat/completions`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Api-Key ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model: modelId,
+              messages: [{ role: 'user', content: 'hola' }],
+              max_tokens: 4,
+            }),
+          });
+
+          const bodyText = await response.text();
+          if (!response.ok) {
+            return {
+              ok: false,
+              status: response.status,
+              message: `HTTP ${response.status}: ${bodyText.slice(0, 250)}`,
+            };
+          }
+
+          return {
+            ok: true,
+            status: response.status,
+            message: `¡Conexión exitosa con Baseten! (HTTP ${response.status})`,
+          };
+        }
+
+        case 'openai': {
+          const apiKey = settings.openaiApiKey?.trim();
+          if (!apiKey) return { ok: false, message: 'Falta ingresar la API Key de OpenAI' };
+          const model = settings.openaiModel?.trim() || 'gpt-4o-mini';
+
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: 'user', content: 'hola' }],
+              max_tokens: 4,
+            }),
+          });
+
+          const bodyText = await response.text();
+          if (!response.ok) {
+            let errorMsg = bodyText;
+            try {
+              const json = JSON.parse(bodyText);
+              errorMsg = json.error?.message || bodyText;
+            } catch {}
+            return {
+              ok: false,
+              status: response.status,
+              message: `HTTP ${response.status} (${model}): ${errorMsg.slice(0, 250)}`,
+            };
+          }
+
+          return {
+            ok: true,
+            status: response.status,
+            message: `¡Conexión exitosa con OpenAI (${model})! (HTTP ${response.status})`,
+          };
+        }
+
+        case 'claude': {
+          const apiKey = settings.claudeApiKey?.trim();
+          if (!apiKey) return { ok: false, message: 'Falta ingresar la API Key de Anthropic' };
+          const model = settings.claudeModel?.trim() || 'claude-3-5-sonnet-20241022';
+
+          const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true',
+            },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: 'user', content: 'hola' }],
+              max_tokens: 4,
+            }),
+          });
+
+          const bodyText = await response.text();
+          if (!response.ok) {
+            let errorMsg = bodyText;
+            try {
+              const json = JSON.parse(bodyText);
+              errorMsg = json.error?.message || bodyText;
+            } catch {}
+            return {
+              ok: false,
+              status: response.status,
+              message: `HTTP ${response.status} (${model}): ${errorMsg.slice(0, 250)}`,
+            };
+          }
+
+          return {
+            ok: true,
+            status: response.status,
+            message: `¡Conexión exitosa con Claude (${model})! (HTTP ${response.status})`,
+          };
+        }
+
+        case 'ollama': {
+          const endpoint = (settings.ollamaEndpoint || 'http://localhost:11434').replace(/\/$/, '');
+          const response = await fetch(`${endpoint}/api/tags`);
+          if (!response.ok) {
+            return {
+              ok: false,
+              status: response.status,
+              message: `HTTP ${response.status} al conectar con Ollama en ${endpoint}`,
+            };
+          }
+
+          return {
+            ok: true,
+            status: response.status,
+            message: `¡Ollama local respondiendo correctamente en ${endpoint}!`,
+          };
+        }
+
+        default:
+          return { ok: false, message: `Proveedor ${provider} no soportado para pruebas` };
+      }
+    } catch (err: any) {
+      return {
+        ok: false,
+        message: `Fallo de red: ${err?.message || String(err)}`,
+      };
+    }
+  }
+
   // Built-in offline fallback message when no provider is connected
   private static generateOfflineFallback(messages: ChatMessage[], errors: { provider: ProviderType; error: string }[]): string {
     const lastUserMsg = messages[messages.length - 1]?.content || 'Hello';
