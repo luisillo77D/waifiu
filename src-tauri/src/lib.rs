@@ -100,29 +100,57 @@ pub struct ActiveWindowInfo {
 
 #[tauri::command]
 fn get_active_window() -> Result<Option<ActiveWindowInfo>, String> {
-    let output = std::process::Command::new("hyprctl")
-        .args(["activewindow", "-j"])
-        .output();
+    #[cfg(target_os = "linux")]
+    {
+        let output = std::process::Command::new("hyprctl")
+            .args(["activewindow", "-j"])
+            .output();
 
-    if let Ok(out) = output {
-        if out.status.success() {
-            if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
-                let class = val.get("class").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let title = val.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                let initial_title = val.get("initialTitle").and_then(|v| v.as_str()).map(|s| s.to_string());
+        if let Ok(out) = output {
+            if out.status.success() {
+                if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
+                    let class = val.get("class").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let title = val.get("title").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let initial_title = val.get("initialTitle").and_then(|v| v.as_str()).map(|s| s.to_string());
 
-                if class.is_empty() && title.is_empty() {
-                    return Ok(None);
+                    if class.is_empty() && title.is_empty() {
+                        return Ok(None);
+                    }
+                    if class == "app" || title.to_lowercase().contains("waifiu") {
+                        return Ok(None);
+                    }
+
+                    return Ok(Some(ActiveWindowInfo {
+                        class,
+                        title,
+                        initial_title,
+                    }));
                 }
-                if class == "app" || title.to_lowercase().contains("waifiu") {
-                    return Ok(None);
-                }
+            }
+        }
+    }
 
-                return Ok(Some(ActiveWindowInfo {
-                    class,
-                    title,
-                    initial_title,
-                }));
+    #[cfg(target_os = "windows")]
+    {
+        let ps_cmd = "$w = Add-Type -MemberDefinition '[DllImport(\"user32.dll\")] public static extern IntPtr GetForegroundWindow();' -Name 'W' -Namespace 'U' -PassThru; $hwnd = $w::GetForegroundWindow(); Get-Process | Where-Object { $_.MainWindowHandle -eq $hwnd } | Select-Object -First 1 ProcessName, MainWindowTitle | ConvertTo-Json";
+        let output = std::process::Command::new("powershell")
+            .args(["-NoProfile", "-NonInteractive", "-Command", ps_cmd])
+            .output();
+
+        if let Ok(out) = output {
+            if out.status.success() {
+                if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
+                    let class = val.get("ProcessName").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    let title = val.get("MainWindowTitle").and_then(|v| v.as_str()).unwrap_or("").to_string();
+
+                    if !class.is_empty() && !title.to_lowercase().contains("waifiu") {
+                        return Ok(Some(ActiveWindowInfo {
+                            class: class.clone(),
+                            title,
+                            initial_title: Some(class),
+                        }));
+                    }
+                }
             }
         }
     }
