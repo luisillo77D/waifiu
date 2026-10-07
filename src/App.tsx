@@ -161,6 +161,17 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleResizeMouseDown = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      await getCurrentWindow().startResizeDragging('SouthEast');
+    } catch (err) {
+      console.warn('Resize dragging fallback:', err);
+    }
+  };
+
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-between p-3 select-none overflow-hidden bg-transparent">
       {/* Top Bar with window controls */}
@@ -214,6 +225,19 @@ export const App: React.FC = () => {
           onClose={() => setIsSettingsOpen(false)}
         />
       )}
+
+      {/* Visual Resize Handle (Bottom-Right Corner) */}
+      <div
+        onMouseDown={handleResizeMouseDown}
+        className="absolute bottom-1 right-1 w-4 h-4 flex items-end justify-end p-0.5 cursor-se-resize z-50 opacity-40 hover:opacity-100 transition-opacity select-none"
+        title="Arrastrá para redimensionar la ventana"
+      >
+        <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 text-purple-400 fill-current">
+          <circle cx="8" cy="8" r="1.2" />
+          <circle cx="4" cy="8" r="1.2" />
+          <circle cx="8" cy="4" r="1.2" />
+        </svg>
+      </div>
     </div>
   );
 };
