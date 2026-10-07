@@ -41,4 +41,10 @@ export interface AppSettings {
   soundEffects: boolean;
   proactiveChatter?: boolean;
   proactiveIntervalMinutes?: number;
+
+  // Custom avatar images & appearance
+  customAvatarIdle?: string;
+  customAvatarDragging?: string;
+  customAvatarThinking?: string;
+  enableLipFlap?: boolean;
 }

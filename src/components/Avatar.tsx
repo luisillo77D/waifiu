@@ -8,6 +8,12 @@ interface AvatarProps {
   variant?: 'neko' | 'cyber' | 'chibi';
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  customAvatars?: {
+    idle?: string;
+    dragging?: string;
+    thinking?: string;
+  };
+  enableLipFlap?: boolean;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({
@@ -17,6 +23,8 @@ export const Avatar: React.FC<AvatarProps> = ({
   variant: _variant = 'neko',
   onDragStart,
   onDragEnd,
+  customAvatars,
+  enableLipFlap = true,
 }) => {
   const [blink, setBlink] = useState(false);
   const [mouthOpen, setMouthOpen] = useState(false);
@@ -168,10 +176,10 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   const avatarSrc =
     state === 'dragging'
-      ? '/avatar-dragging.png'
+      ? customAvatars?.dragging || '/avatar-dragging.png'
       : state === 'thinking'
-      ? '/avatar-thinking.png'
-      : '/avatar.png';
+      ? customAvatars?.thinking || '/avatar-thinking.png'
+      : customAvatars?.idle || '/avatar.png';
 
   return (
     <div
@@ -251,8 +259,8 @@ export const Avatar: React.FC<AvatarProps> = ({
             onError={() => setUseFallbackSvg(true)}
           />
 
-          {/* Animated Anime Mouth Flap during speech */}
-          {state === 'speaking' && mouthOpen && (
+          {/* Animated Anime Mouth Flap during speech (for default avatar or when enabled) */}
+          {state === 'speaking' && mouthOpen && enableLipFlap && !customAvatars?.idle && (
             <div
               className="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2 transition-transform duration-75"
               style={{ top: '32.1%', left: '51.1%' }}

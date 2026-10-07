@@ -105,10 +105,40 @@ El instalador o ejecutable final se generará en:
 ## ⚙️ Configuración del Asistente
 
 Al abrir la ventana de ajustes desde el botón ⚙️ en el globo de diálogo:
-1. **Proveedores**: Ingresa tu clave de API de **Google Gemini** (gratuita en Google AI Studio), OpenAI, Anthropic o la URL de tu instancia de **Ollama**.
-2. **Búsqueda Web**: Activa la opción de DuckDuckGo para que busque información reciente en la web automáticamente.
-3. **Comentarios Espontáneos**: Activa o desactiva si quieres que te hable de vez en cuando y ajusta la frecuencia (cada 3 a 20 minutos).
-4. **Persona**: Personaliza el nombre o el prompt de sistema para adaptar su personalidad a tu gusto.
+1. **API Keys**: Ingresa tu clave de API de **Google Gemini** (gratuita en Google AI Studio), OpenAI, Anthropic, Baseten o la URL de tu instancia local de **Ollama**.
+2. **Fallback Chain**: Configura el orden de respaldo entre proveedores si alguno falla o se agota la cuota.
+3. **Personalidad**: Personaliza el nombre del asistente, el prompt de sistema y la frecuencia de comentarios espontáneos (cada 3 a 20 minutos).
+4. **Avatar (🎭)**: Sube tus propias ilustraciones personalizadas y activa o desactiva la animación labial.
+
+---
+
+## 🎨 Personalización del Avatar (Tus Propias Imágenes)
+
+Puedes sustituir a Nanase por cualquier personaje, waifu o avatar que quieras de dos formas:
+
+### Opción 1: Desde la Interfaz (Recomendada, sin tocar código)
+1. Abre el globo de diálogo y haz clic en el ícono de **⚙️ Ajustes**.
+2. Dirígete a la pestaña **Avatar**.
+3. Sube una imagen para cada uno de los 3 estados reactivos:
+   - **Estado Normal / Reposo**: Postura principal que verás en tu escritorio.
+   - **Al Mover / Arrastrar**: Expresión o pose cuando la levantas con el cursor (ej. enojada o sorprendida).
+   - **Pensando / Generando**: Pose reflexiva mientras la IA procesa tu respuesta.
+4. Presiona **Guardar Cambios**. Las imágenes se almacenan en tu navegador local (Base64), manteniéndose intactas aunque apagues o reinicies la aplicación.
+5. Si deseas volver a los sprites originales de Nanase, solo presiona **Restablecer todo a Nanase por defecto**.
+
+#### 📐 Especificaciones Recomendadas de Imagen:
+- **Formato**: PNG o WebP con **fondo transparente** (canal alfa).
+- **Resolución / Proporción**: Aproximadamente **3:4 vertical** o cuadrada (ej. `600x800` px o `512x680` px).
+- **Tamaño de archivo**: Menor a **2 MB** por imagen para un rendimiento óptimo de memoria.
+- **Sincronización Labial (*Lip Flap*)**: La animación de boca vectorial está calibrada para la geometría facial de Nanase. Al subir un avatar propio, se deshabilita automáticamente para no sobreponer bocas desfasadas, aunque puedes reactivarla manualmente si lo deseas.
+
+### Opción 2: Reemplazo Directo de Archivos en el Código Fuente
+Si estás compilando el proyecto desde cero y quieres que tus imágenes sean las predeterminadas del sistema:
+- Reemplaza los archivos dentro de la carpeta `public/`:
+  - `public/avatar.png` → Avatar en reposo.
+  - `public/avatar-dragging.png` → Avatar al arrastrar.
+  - `public/avatar-thinking.png` → Avatar pensando.
+- Vuelve a compilar con `pnpm build` o `pnpm tauri build`.
 
 ---
 

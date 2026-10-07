@@ -37,6 +37,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   soundEffects: false,
   proactiveChatter: true,
   proactiveIntervalMinutes: 8,
+  enableLipFlap: true,
 };
 
 export function loadSettings(): AppSettings {

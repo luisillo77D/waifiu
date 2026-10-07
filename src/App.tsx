@@ -278,6 +278,12 @@ export const App: React.FC = () => {
           onToggleChat={() => setIsChatOpen((prev) => !prev)}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          customAvatars={{
+            idle: settings.customAvatarIdle,
+            dragging: settings.customAvatarDragging,
+            thinking: settings.customAvatarThinking,
+          }}
+          enableLipFlap={settings.enableLipFlap}
         />
       </div>
 
