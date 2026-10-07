@@ -259,8 +259,8 @@ export class LLMRouter {
       generationConfig,
     };
 
-    // Live web research via Google Search Grounding
-    if (settings.webSearch !== false) {
+    // Live web research via Google Search Grounding (opt-in only to preserve strict RPM quota)
+    if (settings.webSearch === true) {
       requestBody.tools = [{ google_search: {} }];
     }
 
@@ -270,7 +270,7 @@ export class LLMRouter {
       };
     }
 
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -279,6 +279,23 @@ export class LLMRouter {
       body: JSON.stringify(requestBody),
       signal,
     });
+
+    // If transient 429 rate limit is hit, wait 1.5s backoff and retry once
+    if (response.status === 429 && !signal.aborted) {
+      console.warn(`[LLMRouter] Gemini 429 rate limit hit on ${model}. Retrying after 1.5s backoff...`);
+      await new Promise((r) => setTimeout(r, 1500));
+      if (!signal.aborted) {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify(requestBody),
+          signal,
+        });
+      }
+    }
 
     if (!response.ok) {
       const errBody = await response.text().catch(() => '');

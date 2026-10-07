@@ -217,7 +217,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onSave, 
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={current.webSearch !== false}
+                      checked={current.webSearch === true}
                       onChange={(e) => setCurrent({ ...current, webSearch: e.target.checked })}
                       className="sr-only peer"
                     />
