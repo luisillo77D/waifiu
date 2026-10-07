@@ -23,6 +23,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [isInsideWindow, setIsInsideWindow] = useState(true);
   const [eyeOffset, setEyeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [useFallbackSvg, setUseFallbackSvg] = useState(false);
 
   const avatarContainerRef = useRef<HTMLDivElement>(null);
   const isInsideWindowRef = useRef<boolean>(true);
@@ -218,14 +219,32 @@ export const Avatar: React.FC<AvatarProps> = ({
         }`}
       />
 
-      {/* ANIME WAIFU SVG CHARACTER */}
-      <div className="relative w-64 h-64 mx-auto">
-        <svg
-          viewBox="0 0 320 320"
-          className={`w-full h-full transform transition-all duration-300 ${
-            state === 'idle' ? 'animate-bounce-subtle' : ''
-          }`}
-        >
+      {/* ANIME WAIFU CHARACTER (ILLUSTRATION OR SVG FALLBACK) */}
+      {!useFallbackSvg ? (
+        <div className="relative w-64 h-72 sm:w-72 sm:h-80 mx-auto flex items-end justify-center">
+          <img
+            src="/avatar.png"
+            alt="Waifiu"
+            className={`max-h-full max-w-full object-contain pointer-events-none select-none transition-all duration-300 drop-shadow-[0_10px_25px_rgba(0,0,0,0.65)] ${
+              state === 'speaking'
+                ? 'animate-pulse scale-[1.03]'
+                : state === 'idle'
+                ? 'animate-bounce-subtle'
+                : state === 'dragging'
+                ? 'scale-105'
+                : ''
+            }`}
+            onError={() => setUseFallbackSvg(true)}
+          />
+        </div>
+      ) : (
+        <div className="relative w-64 h-64 mx-auto">
+          <svg
+            viewBox="0 0 320 320"
+            className={`w-full h-full transform transition-all duration-300 ${
+              state === 'idle' ? 'animate-bounce-subtle' : ''
+            }`}
+          >
           <defs>
             {/* Hair Gradients */}
             <linearGradient id="hairMain" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -503,6 +522,7 @@ export const Avatar: React.FC<AvatarProps> = ({
           />
         </svg>
       </div>
+      )}
 
       {/* Floating Chat Toggle Icon */}
       <button
