@@ -886,7 +886,7 @@ export class LLMRouter {
       ? `\n\nDetalles del intento:\n${errors.map((e) => `• ${e.provider}: ${e.error}`).join('\n')}`
       : '';
     
-    return `¡Hola! (◕‿◕) Recibí tu mensaje: "${lastUserMsg}".\n\nEstoy lista en tu escritorio, pero actualmente ninguna API pudo responder.${errorDetails}\n\nPara activar mi inteligencia completa con tolerancia a fallos:\n1. Hacé clic en el engranaje ⚙️ de Configuración.\n2. Ingresá tu API Key de Gemini, OpenAI o Claude (o levantá Ollama en localhost:11434).\n\n¡Estoy esperando tus instrucciones! ✨`;
+    return `¡Hola! (◕‿◕) Recibí tu mensaje: "${lastUserMsg}".\n\nEstoy lista en tu escritorio, pero actualmente ninguna API pudo responder.${errorDetails}\n\nPara activar mi inteligencia completa con tolerancia a fallos:\n1. Haz clic en el engranaje ⚙️ de Configuración.\n2. Ingresa tu API Key de Gemini, OpenAI o Claude (o inicia Ollama en localhost:11434).\n\n¡Estoy esperando tus instrucciones! ✨`;
   }
 }
 

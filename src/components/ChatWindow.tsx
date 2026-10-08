@@ -103,7 +103,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className="flex-1 overflow-y-auto px-3.5 py-2 space-y-2 text-xs leading-relaxed">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-center text-slate-400 text-[11px]">
-            <span>¡Hola! Escribime acá abajo para charlar o pedirme cualquier tarea.</span>
+            <span>¡Hola! Escríbeme aquí abajo para platicar o pedirme cualquier tarea.</span>
           </div>
         ) : (
           messages.slice(-8).map((msg) => (
@@ -119,7 +119,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 }`}
               >
                 <div className="text-[9px] opacity-75 font-mono mb-0.5">
-                  {msg.role === 'user' ? 'Vos' : 'Waifiu'}
+                  {msg.role === 'user' ? 'Tú' : 'Waifiu'}
                 </div>
                 <div className="whitespace-pre-wrap">
                   {msg.content}
@@ -142,7 +142,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Escribí un mensaje... (Enter)"
+            placeholder="Escribe un mensaje... (Enter)"
             rows={1}
             className="flex-1 bg-transparent border-0 outline-none resize-none text-xs text-slate-100 placeholder-slate-500 py-0.5 selectable-text focus:ring-0 max-h-16"
           />

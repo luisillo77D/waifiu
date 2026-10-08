@@ -144,7 +144,7 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({
             // Full recent chat history
             messages.length === 0 ? (
               <div className="py-4 text-center text-slate-400 text-[11px]">
-                <span>No hay mensajes anteriores. ¡Escribime algo abajo!</span>
+                <span>No hay mensajes anteriores. ¡Escríbeme algo abajo!</span>
               </div>
             ) : (
               messages.slice(-6).map((msg) => (
@@ -160,7 +160,7 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({
                     }`}
                   >
                     <div className="text-[9px] opacity-75 font-mono mb-0.5">
-                      {msg.role === 'user' ? 'Vos' : 'Nanase'}
+                      {msg.role === 'user' ? 'Tú' : 'Nanase'}
                     </div>
                     <div className="whitespace-pre-wrap">{msg.content}</div>
                   </div>
@@ -172,7 +172,7 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({
             <div className="space-y-1.5">
               {recentUserMessage && (
                 <div className="text-[10px] text-purple-300/80 font-mono truncate px-1">
-                  ↳ Vos: {recentUserMessage.content}
+                  ↳ Tú: {recentUserMessage.content}
                 </div>
               )}
 
@@ -186,7 +186,7 @@ export const SpeechBubble: React.FC<SpeechBubbleProps> = ({
                   </>
                 ) : (
                   <span className="text-slate-400 italic text-[11px]">
-                    (Yuzuki está a tu lado observando... ¡Hablale o dale una tarea!)
+                    (Yuzuki está a tu lado observando... ¡Háblale o dale una tarea!)
                   </span>
                 )}
               </div>

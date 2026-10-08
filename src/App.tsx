@@ -307,7 +307,7 @@ export const App: React.FC = () => {
           <button
             onClick={() => setIsChatOpen(true)}
             className="text-[11px] text-purple-200/90 hover:text-white bg-slate-950/60 hover:bg-slate-900/80 px-3.5 py-1 rounded-full border border-purple-500/30 backdrop-blur-md cursor-pointer shadow-lg transition-all flex items-center gap-1.5 opacity-40 hover:opacity-100"
-            title="Hacé clic para hablar con Nanase"
+            title="Haz clic para hablar con Nanase"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
             <span>💬 Hablar</span>
@@ -328,7 +328,7 @@ export const App: React.FC = () => {
       <div
         onMouseDown={handleResizeMouseDown}
         className="absolute bottom-1 right-1 w-4 h-4 flex items-end justify-end p-0.5 cursor-se-resize z-50 opacity-20 hover:opacity-80 transition-opacity select-none"
-        title="Arrastrá para redimensionar la ventana"
+        title="Arrastra para redimensionar la ventana"
       >
         <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 text-purple-400 fill-current">
           <circle cx="8" cy="8" r="1.2" />

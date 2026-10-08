@@ -28,7 +28,7 @@ export function describeWindowActivity(info: ActiveWindowInfo): string {
     return `usando la terminal (${info.title || 'consola'})`;
   }
   if (cls.includes('firefox') || cls.includes('chrome') || cls.includes('brave') || cls.includes('zen') || cls.includes('edge')) {
-    if (title.includes('youtube')) return `mirando videos en YouTube (${info.title})`;
+    if (title.includes('youtube')) return `viendo videos en YouTube (${info.title})`;
     if (title.includes('github')) return `revisando GitHub (${info.title})`;
     if (title.includes('reddit')) return `leyendo Reddit`;
     return `navegando por la web (${info.title || 'navegador'})`;

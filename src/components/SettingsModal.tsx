@@ -471,7 +471,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ settings, onSave, 
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-semibold text-purple-300 block">Comentarios Espontáneos</span>
-                    <span className="text-[10px] text-slate-400 block">Comenta de ratos sobre lo que estás haciendo en pantalla</span>
+                    <span className="text-[10px] text-slate-400 block">Comenta de vez en cuando sobre lo que estás haciendo en pantalla</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input

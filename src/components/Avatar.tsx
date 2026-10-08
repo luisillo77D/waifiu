@@ -193,7 +193,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       className={`relative select-none cursor-grab active:cursor-grabbing transition-transform duration-300 ${
         state === 'dragging' ? 'scale-105 -translate-y-2' : ''
       } ${isHovered ? 'scale-102' : 'scale-100'}`}
-      title="Hacé clic para alternar diálogo, arrastrá para mover"
+      title="Haz clic para alternar diálogo, arrastra para mover"
     >
       {/* Floating State Badge */}
       <div className="absolute -top-3 left-1/2 -translate-x-1/2 pointer-events-none z-30">
@@ -223,7 +223,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
         {state === 'dragging' && (
           <div className="bg-indigo-600/90 text-white text-[11px] px-3 py-1 rounded-full font-bold shadow-lg flex items-center gap-1.5 border border-indigo-300/50 backdrop-blur-md">
-            <span>(⁄ ⁄&gt;⁄ ▽ ⁄&lt;⁄ ⁄) ¡Soltame!</span>
+            <span>(⁄ ⁄&gt;⁄ ▽ ⁄&lt;⁄ ⁄) ¡Suéltame!</span>
           </div>
         )}
       </div>
